@@ -1,0 +1,2 @@
+# Pin versions here as we add dependencies in later sessions.
+# Likely candidates: numpy, pandas, matplotlib

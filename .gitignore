@@ -1,0 +1,22 @@
+# Python
+__pycache__/
+*.pyc
+*.pyo
+.venv/
+venv/
+env/
+.env
+*.egg-info/
+.ipynb_checkpoints/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Editors
+.vscode/*
+!.vscode/extensions.json
+
+# Data (raw inputs can be large / not ours to redistribute — keep out of git by default)
+data/raw/*
+!data/raw/.gitkeep
