@@ -35,16 +35,18 @@ def debt_projection(
         pensioner_expenditure = growth_factor * pensioner_expenditure
     return years, pension_shares, debts
 
-years, pension_shares, debts = debt_projection()
-years_4, pension_shares_4, debts_4 = debt_projection(tlock_floor=0.04)
+if __name__ == "__main__":
 
-plt.plot(years, debts, label="Triple Lock 2.5% Floor")
-plt.plot(years_4, debts_4, label="Triple Lock 4% Floor")
-plt.xlabel("Year")
-plt.ylabel("Debt to GDP (1.0 = 100%)")
-plt.title("UK Debt Projection 2026-2076")
-plt.legend()
-plt.show()
+    years, pension_shares, debts = debt_projection()
+    years_4, pension_shares_4, debts_4 = debt_projection(tlock_floor=0.04)
+
+    plt.plot(years, debts, label="Triple Lock 2.5% Floor")
+    plt.plot(years_4, debts_4, label="Triple Lock 4% Floor")
+    plt.xlabel("Year")
+    plt.ylabel("Debt to GDP (1.0 = 100%)")
+    plt.title("UK Debt Projection 2026-2076")
+    plt.legend()
+    plt.show()
 
 
 #print("Default Triple Lock: ",years[-1], debts[-1], pension_shares[-1])
