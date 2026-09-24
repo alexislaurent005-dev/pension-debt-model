@@ -1,5 +1,6 @@
 from src import params
 from src.indicator import highest_triple_lock_value
+import matplotlib.pyplot as plt
 
 def debt_projection(    
     starting_pensioner_expenditure = params.PENSION_EXPENDITURE, 
@@ -36,6 +37,17 @@ def debt_projection(
 
 years, pension_shares, debts = debt_projection()
 years_4, pension_shares_4, debts_4 = debt_projection(tlock_floor=0.04)
-print("Default Triple Lock: ",years[-1], debts[-1], pension_shares[-1])
-print("4% Triple Lock: ",years_4[-1], debts_4[-1], pension_shares_4[-1])
-print("Difference: ",years_4[-1], debts_4[-1] - debts[-1], pension_shares_4[-1] - pension_shares[-1])
+
+plt.plot(years, debts, label="Triple Lock 2.5% Floor")
+plt.plot(years_4, debts_4, label="Triple Lock 4% Floor")
+plt.xlabel("Year")
+plt.ylabel("Debt to GDP (1.0 = 100%)")
+plt.title("UK Debt Projection 2026-2076")
+plt.legend()
+plt.show()
+
+
+#print("Default Triple Lock: ",years[-1], debts[-1], pension_shares[-1])
+#print("4% Triple Lock: ",years_4[-1], debts_4[-1], pension_shares_4[-1])
+#print("Difference: ",years_4[-1], debts_4[-1] - debts[-1], pension_shares_4[-1] - pension_shares[-1])
+
