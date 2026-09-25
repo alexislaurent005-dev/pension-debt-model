@@ -77,3 +77,71 @@ choice — not a full fiscal forecast. Average earnings growth is derived as
 productivity growth + inflation (1.4% + 2.2% ≈ 3.6% nominal), since the OBR
 report did not give a single explicit long-run earnings figure in the
 sections fetched for this project.
+
+## Pensioner income distribution (means-tested calibration)
+
+- Source: DWP, *Pensioners' Incomes: financial years ending 1995 to 2025*,
+  data tables, **Table 4.4** (released 26 March 2026)
+  — https://www.gov.uk/government/statistics/pensioners-incomes-financial-years-ending-1995-to-2025
+- Figures used: 3-year average **2022/23 to 2024/25**, £ per week, 2024/25
+  prices, by quintile of the net income (AHC) distribution, calculated
+  separately for pensioner couples and single pensioners
+- **Other (non-State-Pension) income = gross income − benefit income**
+- Couples' incomes are **halved** to give a per-person figure, so every band
+  is measured per pensioner, matching a per-person pension
+
+| Quintile     | Singles (£/wk) | Couples, per person (£/wk) |
+|--------------|----------------|----------------------------|
+| Bottom fifth | 31             | 44                         |
+| Next fifth   | 55             | 96                         |
+| Middle fifth | 103            | 178.5                      |
+| Next fifth   | 156            | 308                        |
+| Top fifth    | 688            | 868.5                      |
+
+## Means-tested pension: design choices
+
+- **Maximum payment = full new State Pension, £241.30/week (2026/27)**, so
+  pensioners with no other income are no worse off than under the current system
+  — Source: GOV.UK, *Benefit and pension rates 2026 to 2027*
+- **Threshold = £238/week of other income**, set at the Pension Credit
+  Standard Minimum Guarantee (single, 2026/27). Note: in Pension Credit this
+  is a floor on *total* income including State Pension; applying it to
+  *other* income only is a deliberate, more generous design choice
+- **Taper = 55%** above the threshold (Universal Credit rate, see above);
+  entitlement is floored at zero
+- **Weighting:** the 10 bands (5 quintiles × singles/couples) are given
+  **equal weight (10% each)**, as Table 4.4 does not give the singles/couples
+  split of the pensioner population
+- All amounts are kept **weekly**; the taper only compares amounts against each
+  other, and the simulation converts to shares of GDP
+
+### Limitations of the means-tested calibration
+
+- "Benefit income" includes Pension Credit, disability and housing benefits
+  as well as State Pension, so subtracting it slightly **understates** other
+  income, which overstates means-tested spending (the cautious direction)
+- Incomes are in 2024/25 prices while the policy parameters are 2026/27
+  rates; not uprating incomes also overstates spending (cautious direction)
+- 25% of pensioner couples include a partner below State Pension age, whose
+  earnings are counted in the couple's income
+- **Full take-up** is assumed (real Pension Credit take-up is well below 100%)
+- **No behavioural response**: pensioner incomes are assumed not to change
+  in response to the taper
+  - **Weighting by people, not units:** the pension is paid per person, so
+  each band is weighted by its share of *pensioners*. Pensioner units in
+  2021/22: ~4.3m single pensioners and ~4.2m pensioner couples (50% / 50%
+  of units). Counting 2 people per couple, singles are ~34% and people in
+  couples ~66% of pensioners. Each quintile holds 20% of its group, giving
+  weights of **0.0673 per singles quintile** and **0.1327 per couples
+  quintile** (summing to 1)
+  — Source: DWP, Stat-Xplore, *Pensioners' Incomes – Data to 2021/22
+  (unlinked)*, weighted count of pensioner units by quintile of the AHC
+  pensioner singles income distribution, 2021/22
+  — https://stat-xplore.dwp.gov.uk/
+  - The singles/couples split is from 2021/22 while incomes are 2022/23 to
+  2024/25; the split changes slowly, so the mismatch is small
+- Couples are counted as 2 pensioners, although 25% of pensioner couples
+  include a partner below State Pension age who would not receive the
+  pension (using 1.75 per couple gives weights of 0.0734 / 0.1266)
+  https://www.gov.uk/government/publications/benefit-and-pension-rates-2026-to-2027/proposed-benefit-and-pension-rates-2026-to-2027
+  
