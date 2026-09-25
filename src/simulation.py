@@ -48,8 +48,3 @@ if __name__ == "__main__":
     plt.legend()
     plt.show()
 
-
-#print("Default Triple Lock: ",years[-1], debts[-1], pension_shares[-1])
-#print("4% Triple Lock: ",years_4[-1], debts_4[-1], pension_shares_4[-1])
-#print("Difference: ",years_4[-1], debts_4[-1] - debts[-1], pension_shares_4[-1] - pension_shares[-1])
-
