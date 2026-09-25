@@ -43,6 +43,10 @@ def debt_projection(
         primary_balance = starting_pensioner_expenditure - actual_expenditure
         debt_to_gdp = (debt_to_gdp * (1 + gilt_rate))/(1 + n_gdp_growth) - primary_balance
         pensioner_expenditure = growth_factor * pensioner_expenditure
+        max_pension = max_pension * tlock
+        threshold = threshold * tlock
+        single_income_quintiles = [single_income_quintiles[i] * (1 + average_earnings_growth) for i in range(len(single_income_quintiles))]
+        couple_income_quintiles = [couple_income_quintiles[i] * (1 + average_earnings_growth) for i in range(len(couple_income_quintiles))]
     return years, pension_shares, debts
 
 if __name__ == "__main__":
