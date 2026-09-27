@@ -56,6 +56,11 @@ if __name__ == "__main__":
     years_mt, pension_shares_mt, debts_mt = debt_projection()
     years_mt_4, pension_shares_mt_4, debts_mt_4 = debt_projection(tlock_floor=0.04)
 
+    print("Triple Lock 2.5% Floor:", debts[-1])
+    print("Triple Lock 4% Floor:", debts_4[-1])
+    print("Means Test 2.5% Floor:", debts_mt[-1])
+    print("Means Test 4% Floor:", debts_mt_4[-1])
+
     plt.plot(years, debts, label="Triple Lock 2.5% Floor")
     plt.plot(years_4, debts_4, label="Triple Lock 4% Floor")
     plt.plot(years_mt, debts_mt, label="Means Test 2.5% Floor")
