@@ -1,3 +1,5 @@
+from operator import index
+
 from src import params
 from src.indicator import highest_triple_lock_value
 import matplotlib.pyplot as plt
@@ -53,20 +55,34 @@ def debt_projection(
 
 if __name__ == "__main__":
 
+    cycled_inflation = []
+    cycled_productivity = []
+
+    for index in range(params.FIRST_YEAR, params.FINAL_YEAR + 1):
+        if index % 2 == 0:
+            cycled_inflation.append(0.032)
+            cycled_productivity.append(-0.006)
+        else:
+            cycled_inflation.append(0.012)
+            cycled_productivity.append(0.034)
+    
     years, pension_shares, debts  = debt_projection(taper_rate=0)
     years_4, pension_shares_4, debts_4 = debt_projection(tlock_floor=0.04, taper_rate=0)
     years_mt, pension_shares_mt, debts_mt = debt_projection()
     years_mt_4, pension_shares_mt_4, debts_mt_4 = debt_projection(tlock_floor=0.04)
+    years_cyc, pension_shares_cyc, debts_cyc = debt_projection(tlock_floor=0.025, taper_rate=0, inflation=cycled_inflation, productivity_growth=cycled_productivity)
 
     print("Triple Lock 2.5% Floor:", debts[-1])
     print("Triple Lock 4% Floor:", debts_4[-1])
     print("Means Test 2.5% Floor:", debts_mt[-1])
     print("Means Test 4% Floor:", debts_mt_4[-1])
+    print("Cycled Inflation and Productivity:", debts_cyc[-1])
 
     plt.plot(years, debts, label="Triple Lock 2.5% Floor")
     plt.plot(years_4, debts_4, label="Triple Lock 4% Floor")
     plt.plot(years_mt, debts_mt, label="Means Test 2.5% Floor")
     plt.plot(years_mt_4, debts_mt_4, label="Means Test 4% Floor")
+    plt.plot(years_cyc, debts_cyc, label="Cycled Inflation and Productivity")
     plt.xlabel("Year")
     plt.ylabel("Debt to GDP (1.0 = 100%)")
     plt.title("UK Debt Projection 2026-2076")
