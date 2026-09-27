@@ -7,9 +7,9 @@ def debt_projection(
     starting_pensioner_expenditure = params.PENSION_EXPENDITURE, 
     debt_to_gdp = params.STARTING_DEBT_TO_GDP,
     r_gdp = params.REAL_GDP_GROWTH,
-    inflation = params.INFLATION_RATE,
+    inflation = params.INFLATION_PATH,
     gilt_rate = params.GILT_RATE,
-    productivity_growth = params.PRODUCTIVITY_GROWTH,
+    productivity_growth = params.PRODUCTIVITY_PATH,
     tlock_floor = params.TRIPLE_LOCK_FLOOR,
     pensioner_growth = params.PENSIONER_GROWTH,
     first_year = params.FIRST_YEAR,
@@ -23,8 +23,7 @@ def debt_projection(
     couple_weight = params.COUPLE_WEIGHT
     ):
 
-    n_gdp_growth = r_gdp + inflation
-    average_earnings_growth = productivity_growth + inflation
+   
     pensioner_expenditure = starting_pensioner_expenditure
 
     years = []
@@ -33,12 +32,15 @@ def debt_projection(
 
     for year in range(first_year, last_year + 1):
         #print(f"Year: {year}", f"Pensioner Expenditure: {pensioner_expenditure}", f"Debt to GDP: {debt_to_gdp}")
+        year_values = year - first_year
+        n_gdp_growth = r_gdp + inflation[year_values]
+        average_earnings_growth = productivity_growth[year_values] + inflation[year_values]
         ratio = average_means_tested_pension(single_income_quintiles, couple_income_quintiles, single_weight, couple_weight, threshold, max_pension, taper_rate)/max_pension
         actual_expenditure = ratio * pensioner_expenditure
         years.append(year)
         pension_shares.append(actual_expenditure)
         debts.append(debt_to_gdp)
-        tlock = 1 + highest_triple_lock_value(average_earnings_growth, inflation, tlock_floor)
+        tlock = 1 + highest_triple_lock_value(average_earnings_growth, inflation[year_values], tlock_floor)
         growth_factor = (tlock * (1 + pensioner_growth)/(1 + n_gdp_growth))
         primary_balance = starting_pensioner_expenditure - actual_expenditure
         debt_to_gdp = (debt_to_gdp * (1 + gilt_rate))/(1 + n_gdp_growth) - primary_balance
