@@ -99,3 +99,33 @@ protection from the ratchet, because:
 reforming the uprating rule removes the *ratchet*. Controlling long-run
 costs needs both levers. (To test later: uprating the threshold with
 earnings rather than the triple lock.)
+
+## 4. Monte Carlo: calibrated volatility (28 Sept 2026)
+
+**Setup:** 1,000 random futures (seed 42). Each year, inflation and
+productivity are drawn independently from normal distributions with the
+baseline means (2.2%, 1.4%) and SDs calibrated from triple lock inputs
+2011/12–2026/27 (inflation 2.55pp, productivity 2.45pp). Both policies face
+the same 1,000 futures.
+
+**2076 debt-to-GDP:**
+
+| | 5th pct | Median | 95th pct |
+|---|---|---|---|
+| Triple lock | 212% | 288% | 397% |
+| Means test | 148% | 212% | 310% |
+| (Constant rates) | | 182% / 106% | |
+
+**Findings:**
+- Volatility raises median triple lock debt by ~106pp over constant rates.
+  An independent replication decomposed this: productivity volatility alone
+  (earnings vs inflation ratchet) gives a median of ~233%; inflation
+  volatility alone gives ~243%, via the **2.5% floor**: when inflation falls
+  below 2.5%, the pension still rises 2.5% while nominal GDP grows slowly
+- Means testing saves a stable ~76pp at the median, the same as under
+  constant rates, but cannot offset the ratchet
+- The distributions overlap heavily: the means test's 95th percentile (310%)
+  exceeds the triple lock's median. Uncertainty is as large as the policy choice
+
+**Caveats:** a stress test, not a forecast. It applies 2011–2026 volatility
+(
