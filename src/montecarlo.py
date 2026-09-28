@@ -1,6 +1,5 @@
 import random
-
-
+import matplotlib.pyplot as plt
 from src import params
 from src.simulation import debt_projection
 
@@ -43,6 +42,30 @@ if __name__ == "__main__":
         results.append(debts[-1])  # Store the final debt to GDP ratio for this simulation
         results_mt.append(debts_mt[-1])  # Store the final debt to GDP ratio for this simulation with means testing
        
+    sorted_results = sorted(results)
+    sorted_results_mt = sorted(results_mt)
+    position_5th_percentile = int(0.05 * len(sorted_results))
+    position_95th_percentile = int(0.95 * len(sorted_results))
+    position_5th_percentile_mt = int(0.05 * len(sorted_results_mt))
+    position_95th_percentile_mt = int(0.95 * len(sorted_results_mt))
+    position_50th_percentile = int(0.5 * len(sorted_results))
+    position_50th_percentile_mt = int(0.5 * len(sorted_results_mt))
+
+    print("5th percentile (Triple Lock):", sorted_results[position_5th_percentile])
+    print("95th percentile (Triple Lock):", sorted_results[position_95th_percentile])
+    print("50th percentile (Triple Lock):", sorted_results[position_50th_percentile])
+    print("5th percentile (Means Test):", sorted_results_mt[position_5th_percentile_mt])
+    print("95th percentile (Means Test):", sorted_results_mt[position_95th_percentile_mt])
+    print("50th percentile (Means Test):", sorted_results_mt[position_50th_percentile_mt]) 
+    
+    plt.hist(sorted_results, bins=30, alpha=0.5, label='Triple Lock')
+    plt.hist(sorted_results_mt, bins=30, alpha=0.5, label='Means Test')
+    plt.title('Distribution of Final Debt to GDP Ratios')
+    plt.xlabel('Final Debt to GDP Ratio')
+    plt.ylabel('Frequency')
+    plt.legend()
+    plt.show()
+
     print(len(results))
     print(len(results_mt))
     print("Average final debt to GDP ratio (Triple Lock):", sum(results) / len(results))
