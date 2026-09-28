@@ -19,8 +19,8 @@ if __name__ == "__main__":
     simulations = 1000
     average_inflation = params.INFLATION_RATE
     average_productivity = params.PRODUCTIVITY_GROWTH
-    inflation_std_dev = 0.01
-    productivity_std_dev = 0.01
+    inflation_std_dev = params.INFLATION_STD_DEV
+    productivity_std_dev = params.PRODUCTIVITY_STD_DEV
 
     inflation_paths, productivity_paths = generate_random_paths(params.FIRST_YEAR, params.FINAL_YEAR, simulations, average_inflation, average_productivity, inflation_std_dev, productivity_std_dev)
 
@@ -57,7 +57,7 @@ if __name__ == "__main__":
     print("5th percentile (Means Test):", sorted_results_mt[position_5th_percentile_mt])
     print("95th percentile (Means Test):", sorted_results_mt[position_95th_percentile_mt])
     print("50th percentile (Means Test):", sorted_results_mt[position_50th_percentile_mt]) 
-    
+
     plt.hist(sorted_results, bins=30, alpha=0.5, label='Triple Lock')
     plt.hist(sorted_results_mt, bins=30, alpha=0.5, label='Means Test')
     plt.title('Distribution of Final Debt to GDP Ratios')
@@ -70,3 +70,4 @@ if __name__ == "__main__":
     print(len(results_mt))
     print("Average final debt to GDP ratio (Triple Lock):", sum(results) / len(results))
     print("Average final debt to GDP ratio (Means Test):", sum(results_mt) / len(results_mt))
+
