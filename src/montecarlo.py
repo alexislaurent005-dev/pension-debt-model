@@ -14,16 +14,9 @@ def generate_random_paths(first_year, last_year, simulations, average_inflation,
         productivity_paths.append(productivity_path)
     return inflation_paths, productivity_paths
 
-if __name__ == "__main__":
-    random.seed(42)  # Set a seed for reproducibility
-    simulations = 1000
-    average_inflation = params.INFLATION_RATE
-    average_productivity = params.PRODUCTIVITY_GROWTH
-    inflation_std_dev = params.INFLATION_STD_DEV
-    productivity_std_dev = params.PRODUCTIVITY_STD_DEV
-
+def run_montecarlo (simulations, average_inflation, average_productivity, inflation_std_dev, productivity_std_dev):
+    random.seed(42)
     inflation_paths, productivity_paths = generate_random_paths(params.FIRST_YEAR, params.FINAL_YEAR, simulations, average_inflation, average_productivity, inflation_std_dev, productivity_std_dev)
-
     print(inflation_paths[0][:5])  # Print the first 5 values of the first generated inflation path
     print(productivity_paths[0][:5])  # Print the first 5 values of the first generated productivity path
     print(sum(inflation_paths[0]) / len(inflation_paths[0]))  # Print the average of the first generated inflation path
@@ -41,7 +34,14 @@ if __name__ == "__main__":
         years_mt, pension_shares_mt, debts_mt = debt_projection(inflation=inflation_path, productivity_growth=productivity_path)
         results.append(debts[-1])  # Store the final debt to GDP ratio for this simulation
         results_mt.append(debts_mt[-1])  # Store the final debt to GDP ratio for this simulation with means testing
-       
+    
+
+    return results, results_mt
+
+if __name__ == "__main__": 
+    results, results_mt = run_montecarlo(1000, params.INFLATION_RATE, params.PRODUCTIVITY_GROWTH, params.INFLATION_STD_DEV, params.PRODUCTIVITY_STD_DEV)
+    results_excl, results_mt_excl = run_montecarlo(1000, params.INFLATION_RATE, params.PRODUCTIVITY_GROWTH, params.INFLATION_STD_DEV_EXCL, params.PRODUCTIVITY_STD_DEV_EXCL)
+
     sorted_results = sorted(results)
     sorted_results_mt = sorted(results_mt)
     position_5th_percentile = int(0.05 * len(sorted_results))
@@ -58,6 +58,19 @@ if __name__ == "__main__":
     print("95th percentile (Means Test):", sorted_results_mt[position_95th_percentile_mt])
     print("50th percentile (Means Test):", sorted_results_mt[position_50th_percentile_mt]) 
 
+    sorted_results_excl = sorted(results_excl)
+    sorted_results_mt_excl = sorted(results_mt_excl)
+ 
+    print("5th percentile (Triple Lock, excl. pandemic):", sorted_results_excl[position_5th_percentile])
+    print("95th percentile (Triple Lock, excl. pandemic):", sorted_results_excl[position_95th_percentile])
+    print("50th percentile (Triple Lock, excl. pandemic):", sorted_results_excl[position_50th_percentile])
+    print("5th percentile (Means Test, excl. pandemic):", sorted_results_mt_excl[position_5th_percentile_mt])
+    print("95th percentile (Means Test, excl. pandemic):", sorted_results_mt_excl[position_95th_percentile_mt])
+    print("50th percentile (Means Test, excl. pandemic):", sorted_results_mt_excl[position_50th_percentile_mt]) 
+    print("Average final debt to GDP ratio (Triple Lock, excl. pandemic):", sum(results_excl) / len(results_excl))
+    print("Average final debt to GDP ratio (Means Test, excl. pandemic):", sum(results_mt_excl) / len(results_mt_excl))
+    
+
     plt.hist(sorted_results, bins=30, alpha=0.5, label='Triple Lock')
     plt.hist(sorted_results_mt, bins=30, alpha=0.5, label='Means Test')
     plt.title('Distribution of Final Debt to GDP Ratios')
@@ -65,9 +78,3 @@ if __name__ == "__main__":
     plt.ylabel('Frequency')
     plt.legend()
     plt.show()
-
-    print(len(results))
-    print(len(results_mt))
-    print("Average final debt to GDP ratio (Triple Lock):", sum(results) / len(results))
-    print("Average final debt to GDP ratio (Means Test):", sum(results_mt) / len(results_mt))
-

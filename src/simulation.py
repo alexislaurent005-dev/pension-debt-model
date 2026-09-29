@@ -1,5 +1,3 @@
-from operator import index
-
 from src import params
 from src.indicator import highest_triple_lock_value
 import matplotlib.pyplot as plt
