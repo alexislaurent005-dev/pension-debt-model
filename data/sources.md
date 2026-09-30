@@ -109,9 +109,6 @@ sections fetched for this project.
   *other* income only is a deliberate, more generous design choice
 - **Taper = 55%** above the threshold (Universal Credit rate, see above);
   entitlement is floored at zero
-- **Weighting:** the 10 bands (5 quintiles × singles/couples) are given
-  **equal weight (10% each)**, as Table 4.4 does not give the singles/couples
-  split of the pensioner population
 - All amounts are kept **weekly**; the taper only compares amounts against each
   other, and the simulation converts to shares of GDP
 
@@ -145,3 +142,16 @@ sections fetched for this project.
   pension (using 1.75 per couple gives weights of 0.0734 / 0.1266)
   https://www.gov.uk/government/publications/benefit-and-pension-rates-2026-to-2027/proposed-benefit-and-pension-rates-2026-to-2027
   
+## Triple lock reform announcement (September 2026)
+
+- Andy Burnham, first Labour conference speech as Prime Minister, 29 Sept 2026:
+  the triple lock is kept until April 2030, then adjusted to a double lock
+  (inflation or 2.5%) with a longer-term adjustment to keep pace with
+  earnings; savings to fund a National Care Service
+  — ITV News, 29 Sept 2026: https://www.itv.com/news/2026-09-29/andy-burnham-social-care-nhs-triple-lock-pensions
+  — The Spectator, "Burnham calls time on the triple lock":
+    https://spectator.com/article/burnham-calls-time-on-the-triple-lock/
+- Modelled as `uprating_rule` from `reform_year=2030`. The earnings adjustment
+  is unpublished, so three versions are compared: `double_lock` (inflation or
+  2.5%), `smoothed_earnings` (double lock plus catch-up to an earnings-linked
+  path started in 2030: our interpretation) and `earnings` (earnings only)

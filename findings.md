@@ -128,4 +128,105 @@ the same 1,000 futures.
   exceeds the triple lock's median. Uncertainty is as large as the policy choice
 
 **Caveats:** a stress test, not a forecast. It applies 2011–2026 volatility
-(
+(including a rare inflation shock) independently every year for 50 years,
+with no persistence, mean reversion or policy response.
+
+**Sensitivity: pandemic years excluded** (inflation SD 2.64pp, productivity
+SD 2.16pp; same seed):
+
+| | 5th pct | Median | 95th pct |
+|---|---|---|---|
+| Triple lock | 207% | 280% | 391% |
+| Means test | 142% | 203% | 301% |
+
+Medians fall by only ~8–9pp and the policy gap is unchanged (~77pp), so the
+results are robust to excluding the Covid-distorted earnings years. The high
+volatility comes mainly from the genuine 2022–24 inflation shock.
+
+## 5. Threshold uprated with earnings instead of the pension (30 Sept 2026)
+
+**Question:** part of the means test's erosion under the ratchet came from the
+threshold (uprated with the pension) outgrowing private incomes (uprated with
+earnings). What if the threshold follows earnings instead?
+(`threshold_uprating="earnings"` in `debt_projection`.)
+
+| Means test, 2076 debt | Threshold follows pension | Threshold follows earnings |
+|---|---|---|
+| 2.5% floor, constant rates | 105.8% | 105.8% (identical, as predicted) |
+| 4% floor | 139.8% | 135.9% |
+| Cycled economy | 128.9% | 126.0% |
+| Monte Carlo median | 212% | 198% |
+
+**Finding:** with constant rates the two rules are identical (the triple lock
+equals earnings growth), confirming the model logic. Linking the threshold
+to earnings recovers only ~3-4pp in deterministic scenarios and ~14pp at the
+Monte Carlo median. Most of the ratchet's cost flows through the **maximum
+pension itself**, which two-thirds of pensioners receive in full, not
+through threshold erosion. Fixing the means test's design is worth doing,
+but it is not a substitute for reforming the uprating rule.
+
+## 6. Uprating reform from April 2030: the Burnham announcement (30 Sept 2026)
+
+**Context:** in his first conference speech as Prime Minister (29 Sept 2026),
+Andy Burnham announced that the triple lock will be kept until April 2030,
+then replaced by a double lock (inflation or 2.5%) with a longer-term
+adjustment to keep pace with earnings, to help fund a National Care Service.
+The detail of the earnings adjustment has not been published, so three
+versions are modelled from 2030 (triple lock applies 2026-2029 in all):
+
+- **double_lock**: max(inflation, 2.5%) only (upper bound on savings)
+- **smoothed_earnings**: double lock each year, plus a catch-up so the pension
+  never falls behind an earnings-linked path started in 2030 (our reading of
+  the announced adjustment; similar in spirit to a "smoothed earnings link")
+- **earnings**: earnings growth only (for comparison)
+
+**2076 debt-to-GDP, universal pension:**
+
+| Rule from 2030 | Constant rates | Cycled economy | Monte Carlo median (5th-95th) |
+|---|---|---|---|
+| Triple lock (no reform) | 182% | 206% | 288% (212-397%) |
+| Smoothed earnings (Burnham reading) | 182% | 184% | 219% (157-311%) |
+| Earnings only | 182% | 183% | 196% (135-280%) |
+| Pure double lock | 116% | 138% | 183% (125-267%) |
+
+**Monte Carlo medians with the means test added:** triple lock 212%,
+smoothed earnings 140%, earnings only 119%, double lock 106%.
+
+**Findings:**
+- **The value of the reform is invisible under constant assumptions.** With
+  constant rates, earnings always beats inflation, so a smoothed earnings link
+  saves nothing (182% either way). Under realistic volatility it cuts median
+  2076 debt by ~69pp, because its whole effect is removing the ratchet. A
+  costing based only on central assumptions would badly understate it.
+- **What the "keep pace with earnings" detail means is decisive.** A pure
+  double lock saves far more (median 183%) but lets the pension fall steadily
+  relative to earnings (pension spending ~4.5% of GDP by 2076 at constant
+  rates vs ~7.3%), a large cut in pensioners' relative living standards. The
+  smoothed version keeps the earnings link and still removes most of the
+  ratchet.
+- **Uprating reform and means testing are complementary.** Each alone lowers
+  the median by ~70-76pp; together (smoothed earnings + means test) the median
+  falls from 288% to 140%.
+- **Timing matters:** the triple lock still applies until 2030, so the reform
+  cannot undo the ratchet accumulated before then.
+
+**Caveats:** the smoothed-earnings rule is an interpretation of an announced
+policy whose details are unpublished; the model covers debt effects only, not
+the National Care Service spending the savings would fund.
+
+## 7. Interactive app (30 Sept 2026)
+
+`app.py` is a Streamlit front end. It imports `debt_projection` and
+`generate_random_paths` from `src/` and adds controls and charts only; no
+model code was changed. Readers can choose the uprating rule and reform year,
+the floor, a means test (threshold, taper, threshold uprating), the economic
+assumptions and Monte Carlo volatility. The page always compares the chosen
+scenario with today's triple lock in the same economy.
+
+It opens on the Burnham reform with volatility switched on (1,000 futures,
+seed 42), reproducing section 6: median 2076 debt 219% vs 288% under the
+triple lock. With volatility off, the page explains why a smoothed earnings
+link looks identical to the triple lock at constant rates.
+
+Checks: all presets and toggles tested with Streamlit's testing tool; figures
+match sections 2 and 6 exactly; layout checked at desktop and phone widths.

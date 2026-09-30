@@ -2,7 +2,18 @@
 
 Work-in-progress research project modelling the long-run impact on the UK's debt-to-GDP ratio of the current State Pension "triple lock" uprating rule, compared against a means-tested pension alternative.
 
-**Status:** environment set up, model build starting.
+**Status:** core model, scenario analysis and Monte Carlo complete; interactive app available. Research write-up in progress (see `findings.md`).
+
+## Try the interactive model
+
+Choose a pension uprating rule (including the triple lock reform announced in September 2026), switch on a means test, change the economic assumptions and simulate volatile inflation and earnings, then see how UK public debt responds to 2076.
+
+To run it on your own computer:
+
+```bash
+pip install -r requirements.txt
+streamlit run app.py
+```
 
 ## Motivation
 
@@ -15,6 +26,7 @@ _(to be written — data sources, the triple lock and means-tested pension rules
 ## Repository structure
 
 ```
+app.py      interactive front end (Streamlit)
 src/        model code
 data/       input data (OBR / ONS / DWP series)
 tests/      unit tests
