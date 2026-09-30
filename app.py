@@ -147,13 +147,13 @@ def chart(results, measure, title, uncertain):
     colour_scale = alt.Scale(domain=["Triple lock (current policy)", "Your scenario"],
                              range=[BASELINE_COLOUR, SCENARIO_COLOUR])
     colour = alt.Color("Policy:N", scale=colour_scale,
-                       legend=alt.Legend(orient="top", title=None))
+                       legend=alt.Legend(orient="top", title=None, labelLimit=400))
     x = alt.X("Year:Q", axis=alt.Axis(format="d", title=None, tickCount=6),
               scale=alt.Scale(domain=[params.FIRST_YEAR, params.FINAL_YEAR], nice=False))
     y_title = f"{title}, % of GDP"
     dash = alt.StrokeDash("Policy:N", scale=alt.Scale(
         domain=["Triple lock (current policy)", "Your scenario"], range=[[6, 4], [1, 0]]),
-        legend=alt.Legend(orient="top", title=None))
+        legend=alt.Legend(orient="top", title=None, labelLimit=400))
     lines = alt.Chart(df).mark_line(strokeWidth=2.5).encode(
         x=x, y=alt.Y("Central:Q", title=y_title), color=colour, strokeDash=dash,
         tooltip=[alt.Tooltip("Year:Q", format="d"), "Policy:N",
@@ -170,6 +170,9 @@ def chart(results, measure, title, uncertain):
 st.set_page_config(page_title="Pension policy and UK debt, 2026-2076", layout="wide")
 st.markdown("""
 <style>
+html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"], [data-testid="stMarkdownContainer"],
+[data-testid="stWidgetLabel"], [data-testid="stExpander"], p, label, li, input, button, textarea {
+  font-family: Georgia, "Times New Roman", serif !important; }
 h1, h2, h3, [data-testid="stHeading"] h1, [data-testid="stHeading"] h2, [data-testid="stHeading"] h3 {
   font-family: Georgia, "Times New Roman", serif !important; font-weight: 600 !important; letter-spacing: -0.01em; }
 [data-testid="stMarkdownContainer"] p.readout { font-family: Georgia, serif; font-size: 1.5rem !important;
