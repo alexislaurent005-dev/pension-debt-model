@@ -14,13 +14,10 @@ def generate_random_paths(first_year, last_year, simulations, average_inflation,
         productivity_paths.append(productivity_path)
     return inflation_paths, productivity_paths
 
-def run_montecarlo (simulations, average_inflation, average_productivity, inflation_std_dev, productivity_std_dev):
+def run_montecarlo (simulations, average_inflation, average_productivity, inflation_std_dev, productivity_std_dev,
+                    uprating_rule="triple_lock", reform_year=None, threshold_uprating="pension"):
     random.seed(42)
     inflation_paths, productivity_paths = generate_random_paths(params.FIRST_YEAR, params.FINAL_YEAR, simulations, average_inflation, average_productivity, inflation_std_dev, productivity_std_dev)
-    print(inflation_paths[0][:5])  # Print the first 5 values of the first generated inflation path
-    print(productivity_paths[0][:5])  # Print the first 5 values of the first generated productivity path
-    print(sum(inflation_paths[0]) / len(inflation_paths[0]))  # Print the average of the first generated inflation path
-    print(sum(productivity_paths[0]) / len(productivity_paths[0]))  # Print the average of the first generated productivity path
 
 
     results = []
@@ -30,8 +27,10 @@ def run_montecarlo (simulations, average_inflation, average_productivity, inflat
 
         inflation_path = inflation_paths[i]
         productivity_path = productivity_paths[i]
-        years, pension_shares, debts = debt_projection(inflation=inflation_path, productivity_growth=productivity_path, taper_rate=0)
-        years_mt, pension_shares_mt, debts_mt = debt_projection(inflation=inflation_path, productivity_growth=productivity_path)
+        years, pension_shares, debts = debt_projection(inflation=inflation_path, productivity_growth=productivity_path, taper_rate=0,
+                                                        uprating_rule=uprating_rule, reform_year=reform_year, threshold_uprating=threshold_uprating)
+        years_mt, pension_shares_mt, debts_mt = debt_projection(inflation=inflation_path, productivity_growth=productivity_path,
+                                                                 uprating_rule=uprating_rule, reform_year=reform_year, threshold_uprating=threshold_uprating)
         results.append(debts[-1])  # Store the final debt to GDP ratio for this simulation
         results_mt.append(debts_mt[-1])  # Store the final debt to GDP ratio for this simulation with means testing
     
@@ -70,6 +69,15 @@ if __name__ == "__main__":
     print("Average final debt to GDP ratio (Triple Lock, excl. pandemic):", sum(results_excl) / len(results_excl))
     print("Average final debt to GDP ratio (Means Test, excl. pandemic):", sum(results_mt_excl) / len(results_mt_excl))
     
+
+    # Uprating reforms from April 2030 under the same 1,000 futures (findings section 6)
+    for rule in ["smoothed_earnings", "earnings", "double_lock"]:
+        results_r, results_mt_r = run_montecarlo(1000, params.INFLATION_RATE, params.PRODUCTIVITY_GROWTH, params.INFLATION_STD_DEV, params.PRODUCTIVITY_STD_DEV,
+                                                 uprating_rule=rule, reform_year=2030)
+        sorted_r = sorted(results_r)
+        sorted_mt_r = sorted(results_mt_r)
+        print(f"Median ({rule} from 2030, universal):", sorted_r[position_50th_percentile])
+        print(f"Median ({rule} from 2030, means test):", sorted_mt_r[position_50th_percentile_mt])
 
     plt.hist(sorted_results, bins=30, alpha=0.5, label='Triple Lock')
     plt.hist(sorted_results_mt, bins=30, alpha=0.5, label='Means Test')
