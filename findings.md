@@ -216,6 +216,8 @@ the National Care Service spending the savings would fund.
 
 ## 7. Interactive app (30 Sept 2026)
 
+Live at https://alexislaurent-pension-debt-model.streamlit.app/ (Streamlit Community Cloud, deployed from `main`).
+
 `app.py` is a Streamlit front end. It imports `debt_projection` and
 `generate_random_paths` from `src/` and adds controls and charts only; no
 model code was changed. Readers can choose the uprating rule and reform year,

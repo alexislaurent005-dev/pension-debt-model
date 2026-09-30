@@ -1,10 +1,14 @@
 # Means-Tested Pension vs. Triple Lock: A Debt-to-GDP Model
 
-Work-in-progress research project modelling the long-run impact on the UK's debt-to-GDP ratio of the current State Pension "triple lock" uprating rule, compared against a means-tested pension alternative.
+**[Open the interactive model](https://alexislaurent-pension-debt-model.streamlit.app/)**
+
+Research project modelling the long-run impact on the UK's debt-to-GDP ratio of the current State Pension "triple lock" uprating rule, compared against a means-tested pension alternative.
 
 **Status:** core model, scenario analysis and Monte Carlo complete; interactive app available. Research write-up in progress (see `findings.md`).
 
 ## Try the interactive model
+
+**Live app: [https://alexislaurent-pension-debt-model.streamlit.app/](https://alexislaurent-pension-debt-model.streamlit.app/)**
 
 Choose a pension uprating rule (including the triple lock reform announced in September 2026), switch on a means test, change the economic assumptions and simulate volatile inflation and earnings, then see how UK public debt responds to 2076.
 
