@@ -232,3 +232,32 @@ link looks identical to the triple lock at constant rates.
 
 Checks: all presets and toggles tested with Streamlit's testing tool; figures
 match sections 2 and 6 exactly; layout checked at desktop and phone widths.
+
+## 8. Saving needed to hold debt at 100% of GDP (1 Oct 2026)
+
+**Method:** the app rebuilds each debt path with the same identity as
+`debt_projection` (reproducing it exactly when no target applies) and, in any
+year where debt would end above the target, adds the extra primary surplus
+needed to hold it there. Pounds use OBR nominal GDP for 2026-27 (~£3.2tn), i.e.
+each year's share of GDP at today's size of the economy.
+
+**Extra saving needed by 2076 to hold debt at 100% of GDP:**
+
+| Policy | Constant rates | Monte Carlo median |
+|---|---|---|
+| Triple lock | 2.9% of GDP (~£90bn); needed from 2034 | 7.7% (~£244bn); from 2036 |
+| Smoothed earnings link from 2030 | 2.9% (~£90bn); from 2034 | 3.9% (~£123bn); from 2038 |
+| Smoothed earnings link + means test | — | 1.8% (~£56bn); from 2063 |
+
+**Findings:**
+- At constant rates the triple lock's requirement is the pension overspend
+  (7.3% - 5% of GDP) plus the interest-growth gap on debt held at 100%
+  ((4.3% - 3.7%) / 1.037 x 100% ≈ 0.6% of GDP), a useful check on the logic.
+- Under volatility, keeping the triple lock means finding ~£244bn a year (in
+  today's terms) by 2076 to stop debt rising above 100% of GDP; the
+  smoothed-earnings reform halves that, and adding a means test cuts it to
+  ~£56bn and delays the need until the 2060s.
+- Because r > g, a higher debt ceiling delays the saving but raises the
+  eventual requirement (e.g. holding at 150% under the triple lock needs 8.0%
+  of GDP by 2076 in the median future, vs 7.7% at 100%): a larger debt carries
+  a permanently larger interest burden.

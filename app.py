@@ -15,6 +15,9 @@ from src.montecarlo import generate_random_paths
 from src.simulation import debt_projection
 
 N_YEARS = params.FINAL_YEAR - params.FIRST_YEAR + 1
+# Nominal GDP 2026-27, OBR Economic and fiscal outlook, November 2025 (£bn). Used only to
+# translate shares of GDP into pounds at today's size of the economy.
+GDP_2026_27_BN = 3165
 REPO_URL = "https://github.com/alexislaurent005-dev/pension-debt-model"
 
 SCENARIO_COLOUR = "#1B7F79"   # teal: the reader's scenario
@@ -48,12 +51,16 @@ DEFAULTS = {
     "runs": 1000,
     "sd_inflation": params.INFLATION_STD_DEV * 100,
     "sd_productivity": params.PRODUCTIVITY_STD_DEV * 100,
+    "target_on": False,
+    "debt_target": 100.0,
 }
 PRESETS = {
     "Current policy": {},
     "Burnham reform from 2030": {"rule": "Smoothed earnings link (Burnham reform, our reading)"},
     "Burnham reform + means test": {"rule": "Smoothed earnings link (Burnham reform, our reading)",
                                     "means_test": True},
+    "Hold debt at 100% of GDP": {"rule": "Smoothed earnings link (Burnham reform, our reading)",
+                                 "target_on": True},
 }
 
 
@@ -86,6 +93,27 @@ def projection_settings(s, scenario=True):
     }
 
 
+def saving_to_hold_target(pension_shares, inflation_path, s):
+    """Extra saving (% of GDP, as a fraction) needed each year to stop debt rising above the target.
+
+    Rebuilds the debt path with the same identity as debt_projection(), using that run's
+    pension spending, and whenever debt would end the year above the target, records the
+    primary surplus needed to hold it there. Without a target this reproduces debt_projection()
+    exactly (checked in testing).
+    """
+    target = s["debt_target"] / 100
+    debt = s["start_debt"] / 100
+    savings = []
+    for t in range(N_YEARS):
+        nominal_growth = s["real_growth"] / 100 + inflation_path[t]
+        next_debt = (debt * (1 + s["gilt"] / 100) / (1 + nominal_growth)
+                     - (params.PENSION_EXPENDITURE - pension_shares[t]))
+        needed = max(0.0, next_debt - target)
+        savings.append(needed)
+        debt = next_debt - needed
+    return savings
+
+
 @st.cache_data(show_spinner=False)
 def run_deterministic(settings_items):
     s = dict(settings_items)
@@ -95,7 +123,8 @@ def run_deterministic(settings_items):
     for name, scenario in [("scenario", True), ("baseline", False)]:
         years, shares, debts = debt_projection(inflation=inflation, productivity_growth=productivity,
                                                **projection_settings(s, scenario))
-        out[name] = {"years": years, "debt": debts, "pension": shares}
+        out[name] = {"years": years, "debt": debts, "pension": shares,
+                     "saving": saving_to_hold_target(shares, inflation, s)}
     return out
 
 
@@ -108,15 +137,17 @@ def run_uncertain(settings_items):
         s["sd_inflation"] / 100, s["sd_productivity"] / 100)
     out = {}
     for name, scenario in [("scenario", True), ("baseline", False)]:
-        debt_runs, pension_runs = [], []
+        debt_runs, pension_runs, saving_runs = [], [], []
         for i in range(s["runs"]):
             years, shares, debts = debt_projection(inflation=inflation_paths[i],
                                                    productivity_growth=productivity_paths[i],
                                                    **projection_settings(s, scenario))
             debt_runs.append(debts)
             pension_runs.append(shares)
+            saving_runs.append(saving_to_hold_target(shares, inflation_paths[i], s))
         out[name] = {"years": years, "debt": percentiles_by_year(debt_runs),
-                     "pension": percentiles_by_year(pension_runs)}
+                     "pension": percentiles_by_year(pension_runs),
+                     "saving": percentiles_by_year(saving_runs)}
     return out
 
 
@@ -225,6 +256,13 @@ with st.sidebar:
     st.slider("Inflation volatility (pp)", 0.0, 4.0, step=0.05, key="sd_inflation", disabled=not unc_on)
     st.slider("Real earnings volatility (pp)", 0.0, 4.0, step=0.05, key="sd_productivity", disabled=not unc_on)
 
+    st.subheader("Debt target")
+    st.toggle("Hold debt at a target", key="target_on",
+              help="Shows how much extra saving (spending cuts or tax rises) would be needed each year to "
+                   "stop debt rising above the target, under your scenario and under the triple lock.")
+    st.slider("Target (% of GDP)", 60.0, 150.0, step=5.0, key="debt_target",
+              disabled=not st.session_state["target_on"])
+
 settings = {key: st.session_state[key] for key in DEFAULTS}
 settings_items = tuple(sorted(settings.items()))
 uncertain = settings["uncertainty"]
@@ -268,6 +306,47 @@ if uncertain:
                 "shading covers the middle 90%. The dashed red line keeps today's triple lock in the same futures.</p>",
                 unsafe_allow_html=True)
 
+if settings["target_on"]:
+    target = settings["debt_target"]
+    st.subheader(f"Saving needed to hold debt at {target:.0f}% of GDP")
+
+    def first_year_needed(name):
+        series = results[name]["saving"]
+        path = series["p50"] if uncertain else series
+        for year, value in zip(results[name]["years"], path):
+            if value > 1e-9:
+                return year
+        return None
+
+    def describe(name):
+        year = first_year_needed(name)
+        if year is None:
+            return None, None, None
+        share = final(name, "saving")
+        return year, share, share / 100 * GDP_2026_27_BN
+
+    y_s, sh_s, bn_s = describe("scenario")
+    y_b, sh_b, bn_b = describe("baseline")
+    median = "In the median future, d" if uncertain else "D"
+    if y_s is None:
+        text = (f"{median}ebt stays below {target:.0f}% of GDP until 2076 under your settings, "
+                f"so no extra saving is needed.")
+    else:
+        text = (f"{median}ebt first reaches {target:.0f}% of GDP in {y_s} under your settings. Holding it there "
+                f"needs extra saving of <b class='scen'>{sh_s:.1f}% of GDP a year</b> by 2076, about "
+                f"<b class='scen'>£{bn_s:,.0f}bn</b> at today's size of the economy.")
+    if y_b is None:
+        text += " Under the triple lock, no extra saving would be needed."
+    else:
+        text += (f" Keeping the triple lock, the target is reached in {y_b} and needs "
+                 f"<b class='base'>{sh_b:.1f}% of GDP (about £{bn_b:,.0f}bn)</b> a year by 2076.")
+    st.markdown(f"<p class='readout' style='font-size:1.25rem !important'>{text}</p>", unsafe_allow_html=True)
+    st.altair_chart(chart(results, "saving", "Extra saving", uncertain), width="stretch")
+    st.markdown("<p class='small-note'>Extra saving means a larger primary surplus (spending cuts or tax rises "
+                "elsewhere in the budget) than today's. Holding debt down also lowers future interest costs, which "
+                "the calculation includes. Pounds use the OBR's 2026-27 GDP forecast (about £3.2 trillion), so they "
+                "show each year's share of GDP at today's size of the economy.</p>", unsafe_allow_html=True)
+
 pen_s, pen_b = final("scenario", "pension"), final("baseline", "pension")
 st.subheader("State Pension spending")
 st.markdown(f"<p class='small-note'>{pen_s:.1f}% of GDP in 2076 under your settings, against "
@@ -297,6 +376,11 @@ a double lock each year, with catch-up whenever the pension falls behind an earn
 around the chosen averages, with spreads calibrated on the triple lock's own inputs from 2011/12 to
 2026/27. Because the triple lock keeps the highest of its measures and never gives it back, volatility
 raises its cost. Treat the ranges as a stress test rather than a forecast.
+
+**Debt target.** With the target switched on, the model rebuilds each debt path with the same equation and,
+in any year where debt would end above the target, adds just enough extra primary surplus to hold it there.
+The chart shows that required saving year by year, as a share of GDP. Because debt is held down, interest
+costs are lower too, so the saving needed is smaller than the gap between the uncapped debt line and the target.
 
 Code, data sources, findings and limitations: [{REPO_URL}]({REPO_URL})
 """)
