@@ -405,12 +405,13 @@ p.readout { font-size: 1.18rem !important; line-height: 1.5 !important; margin: 
   max-width: 62rem; color: #1C2A2E; }
 .readout b.scen { color: #1B7F79; }
 .readout b.base { color: #B23A48; }
+.readout b.num { color: #1C2A2E; }
 .readout .aside { color: #5A6472; font-style: italic; }
 .small-note { color: #5A6472; font-size: 0.9rem; margin: 0; }
 .small-note a { color: #1B7F79; }
 .footer { text-align: center; padding-top: 0.3rem; }
 .panel-head { font-size: 0.9rem; letter-spacing: 0.08em; text-transform: uppercase; color: #5A6472;
-  margin: 0.4rem 0 0.2rem 0; border-bottom: 1px solid #DCE2E0; padding-bottom: 0.3rem; }
+  margin: 0.4rem 0 0.9rem 0; border-bottom: 1px solid #DCE2E0; padding-bottom: 0.3rem; }
 
 /* smaller laptops: tighter margins and slightly smaller control text so the bottom row fits */
 @media (max-width: 1500px) {
@@ -453,47 +454,65 @@ def first_year_needed(name):
 
 
 # ---- the readout sentence, for whichever view is showing
+# Every number that moves with the controls is highlighted: teal for your scenario,
+# red for the triple lock, dark for the gap between them and the target you set.
+def scen_num(text):
+    return f"<b class='scen'>{text}</b>"
+
+
+def base_num(text):
+    return f"<b class='base'>{text}</b>"
+
+
+def gap_num(text):
+    return f"<b class='num'>{text}</b>"
+
+
 lead = "In the median future, " if uncertain else ""
 if view == "Public debt":
     scen, base = final("scenario", "debt"), final("baseline", "debt")
     gap = base - scen
     if abs(gap) < 0.5:
-        comparison = "about the same as keeping the triple lock"
+        comparison = f"about the same as keeping the triple lock ({base_num(f'{base:.0f}%')})"
     elif gap > 0:
-        comparison = f"{gap:.0f} points lower than keeping the triple lock (<b class='base'>{base:.0f}%</b>)"
+        comparison = (f"{gap_num(f'{gap:.0f} points')} lower than keeping the triple lock "
+                      f"({base_num(f'{base:.0f}%')})")
     else:
-        comparison = f"{-gap:.0f} points higher than keeping the triple lock (<b class='base'>{base:.0f}%</b>)"
+        comparison = (f"{gap_num(f'{-gap:.0f} points')} higher than keeping the triple lock "
+                      f"({base_num(f'{base:.0f}%')})")
     if scen >= 0:
-        outcome = f"debt reaches <b class='scen'>{scen:.0f}% of GDP</b>"
+        outcome = f"debt reaches {scen_num(f'{scen:.0f}% of GDP')}"
     else:
-        outcome = f"debt is paid off entirely, leaving <b class='scen'>net assets of {-scen:.0f}% of GDP</b>"
+        outcome = f"debt is paid off entirely, leaving {scen_num(f'net assets of {-scen:.0f}% of GDP')}"
     sentence = f"{lead}public {outcome} in 2076 under your settings, {comparison}."
     if uncertain:
         lo, hi = final("scenario", "debt", "p5"), final("scenario", "debt", "p95")
-        sentence += f" In 90% of futures it lands between {lo:.0f}% and {hi:.0f}%."
+        sentence += f" In 90% of futures it lands between {scen_num(f'{lo:.0f}%')} and {scen_num(f'{hi:.0f}%')}."
     elif RULES[settings["rule"]] in ("smoothed_earnings", "earnings"):
         sentence += (" <span class='aside'>With a steady economy this reform matches the triple lock; "
                      "turn on <b>Volatile economy</b> to see what it saves.</span>")
 elif view == "Pension spending":
     pen_s, pen_b = final("scenario", "pension"), final("baseline", "pension")
-    sentence = (f"{lead}State Pension spending is <b class='scen'>{pen_s:.1f}% of GDP</b> in 2076 under your "
-                f"settings, against <b class='base'>{pen_b:.1f}%</b> under the triple lock (5% today). "
+    sentence = (f"{lead}State Pension spending is {scen_num(f'{pen_s:.1f}% of GDP')} in 2076 under your "
+                f"settings, against {base_num(f'{pen_b:.1f}%')} under the triple lock (5% today). "
                 f"A lower line means pensions grow more slowly than the economy.")
 else:
     target = settings["debt_target"]
     y_s, y_b = first_year_needed("scenario"), first_year_needed("baseline")
     if y_s is None:
-        sentence = f"{lead}debt stays below {target:.0f}% of GDP to 2076 under your settings, so no extra saving is needed."
+        sentence = (f"{lead}debt stays below {gap_num(f'{target:.0f}% of GDP')} to 2076 under your settings, "
+                    "so no extra saving is needed.")
     else:
         sh_s = final("scenario", "saving")
-        sentence = (f"{lead}holding debt at {target:.0f}% of GDP needs extra saving from {y_s}, reaching "
-                    f"<b class='scen'>{sh_s:.1f}% of GDP (about £{sh_s / 100 * GDP_2026_27_BN:,.0f}bn)</b> a year by 2076.")
+        sentence = (f"{lead}holding debt at {gap_num(f'{target:.0f}% of GDP')} needs extra saving from "
+                    f"{scen_num(y_s)}, reaching {scen_num(f'{sh_s:.1f}% of GDP')} "
+                    f"(about {scen_num(f'£{sh_s / 100 * GDP_2026_27_BN:,.0f}bn')}) a year by 2076.")
     if y_b is None:
         sentence += " Under the triple lock, none would be needed."
     else:
         sh_b = final("baseline", "saving")
-        sentence += (f" Keeping the triple lock: <b class='base'>{sh_b:.1f}% "
-                     f"(about £{sh_b / 100 * GDP_2026_27_BN:,.0f}bn)</b>, from {y_b}.")
+        sentence += (f" Keeping the triple lock: {base_num(f'{sh_b:.1f}%')} "
+                     f"(about {base_num(f'£{sh_b / 100 * GDP_2026_27_BN:,.0f}bn')}), from {base_num(y_b)}.")
 sentence = sentence[0].upper() + sentence[1:]
 
 
