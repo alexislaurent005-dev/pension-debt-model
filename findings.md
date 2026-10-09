@@ -261,3 +261,25 @@ each year's share of GDP at today's size of the economy.
   eventual requirement (e.g. holding at 150% under the triple lock needs 8.0%
   of GDP by 2076 in the median future, vs 7.7% at 100%): a larger debt carries
   a permanently larger interest burden.
+
+## App redesign: one screen (9 Oct 2026)
+
+Reworked `app.py` so the whole model fits on one screen without scrolling,
+for readers with no economics background. No model code in `src/` changed,
+and the model-calling functions in `app.py` are unchanged.
+
+- **Layout:** chart in the centre; pension policy controls on the left, the
+  economy on the right, and the chart view, volatility and debt target along
+  the bottom. Less-used controls (the floor, threshold uprating, pensioner
+  growth, starting debt, number of futures, volatility sizes) sit behind
+  "More options" pop-overs.
+- **One chart, three views:** public debt, pension spending, or the saving
+  needed to hold debt at a target, chosen along the bottom. The readout
+  sentence above the chart changes with the view.
+- **Story panel:** all the explanation (the question, the ratchet, findings,
+  how the model works, limitations, key terms) moved into a panel that slides
+  out from the right via "How does this work?".
+- **Write-up:** the README PDF is in `docs/README.pdf`, downloadable from the
+  panel and the footer.
+- Credit corrected to BA Economics and International Development.
+- `requirements.txt` now needs Streamlit 1.65+, for the right-hand panel.

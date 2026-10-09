@@ -1,4 +1,4 @@
 pandas>=2.2
 matplotlib>=3.8
-streamlit>=1.40
+streamlit>=1.65
 altair>=5

@@ -3,8 +3,15 @@
 All the economics lives in src/ (written by Alexis). This file only builds
 the controls and charts, and calls debt_projection() and
 generate_random_paths() with whatever the reader chooses.
+
+Layout: one screen, no scrolling. The chart sits in the centre, with the
+controls around it (pension policy on the left, the economy on the right,
+the view and uncertainty along the bottom). Everything written, the
+explanation, findings and limitations, lives in a panel that slides out
+from the right when the reader asks for it.
 """
 import random
+from pathlib import Path
 
 import altair as alt
 import pandas as pd
@@ -19,17 +26,22 @@ N_YEARS = params.FINAL_YEAR - params.FIRST_YEAR + 1
 # translate shares of GDP into pounds at today's size of the economy.
 GDP_2026_27_BN = 3165
 REPO_URL = "https://github.com/alexislaurent005-dev/pension-debt-model"
+README_PDF = Path(__file__).parent / "docs" / "README.pdf"
 
 SCENARIO_COLOUR = "#1B7F79"   # teal: the reader's scenario
 BASELINE_COLOUR = "#B23A48"   # muted red: the current triple lock
+CHART_HEIGHT = 400
 
 RULES = {
     "Triple lock (current policy)": "triple_lock",
-    "Smoothed earnings link (Burnham reform, our reading)": "smoothed_earnings",
+    "Burnham reform (smoothed earnings link)": "smoothed_earnings",
     "Double lock: inflation or floor": "double_lock",
     "Earnings only": "earnings",
     "Inflation (CPI) only": "cpi",
 }
+
+# What the chart in the centre shows. The reader switches between these along the bottom.
+VIEWS = ["Public debt", "Pension spending", "Saving to hold debt"]
 
 # Presets set every control at once. Values are stored in session_state
 # under the same keys the widgets use.
@@ -51,22 +63,23 @@ DEFAULTS = {
     "runs": 1000,
     "sd_inflation": params.INFLATION_STD_DEV * 100,
     "sd_productivity": params.PRODUCTIVITY_STD_DEV * 100,
-    "target_on": False,
     "debt_target": 100.0,
 }
 PRESETS = {
     "Current policy": {},
-    "Burnham reform from 2030": {"rule": "Smoothed earnings link (Burnham reform, our reading)"},
-    "Burnham reform + means test": {"rule": "Smoothed earnings link (Burnham reform, our reading)",
+    "Burnham reform from 2030": {"rule": "Burnham reform (smoothed earnings link)"},
+    "Burnham reform + means test": {"rule": "Burnham reform (smoothed earnings link)",
                                     "means_test": True},
-    "Hold debt at 100% of GDP": {"rule": "Smoothed earnings link (Burnham reform, our reading)",
-                                 "target_on": True},
+    "Hold debt at 100% of GDP": {"rule": "Burnham reform (smoothed earnings link)",
+                                 "view": "Saving to hold debt"},
 }
 
 
 def apply_preset():
     choice = st.session_state["preset"]
-    for key, value in {**DEFAULTS, **PRESETS[choice]}.items():
+    preset = dict(PRESETS[choice])
+    st.session_state["view"] = preset.pop("view", "Public debt")
+    for key, value in {**DEFAULTS, **preset}.items():
         st.session_state[key] = value
 
 
@@ -164,7 +177,7 @@ def percentiles_by_year(runs):
 
 
 # ---------------------------------------------------------------- charts
-def chart(results, measure, title, uncertain):
+def chart(results, measure, title, uncertain, note=""):
     rows = []
     for name, label in [("baseline", "Triple lock (current policy)"), ("scenario", "Your scenario")]:
         series = results[name][measure]
@@ -177,40 +190,211 @@ def chart(results, measure, title, uncertain):
     df = pd.DataFrame(rows)
     colour_scale = alt.Scale(domain=["Triple lock (current policy)", "Your scenario"],
                              range=[BASELINE_COLOUR, SCENARIO_COLOUR])
-    colour = alt.Color("Policy:N", scale=colour_scale,
-                       legend=alt.Legend(orient="top", title=None, labelLimit=400))
+    legend = alt.Legend(orient="top-left", title=None, labelLimit=400, labelFontSize=12, symbolType="stroke",
+                        symbolStrokeWidth=2.5, symbolSize=300,
+                        fillColor="rgba(255,255,255,0.85)", padding=6)
+    colour = alt.Color("Policy:N", scale=colour_scale, legend=legend)
+    band_colour = alt.Color("Policy:N", scale=colour_scale, legend=None)
     x = alt.X("Year:Q", axis=alt.Axis(format="d", title=None, tickCount=6),
               scale=alt.Scale(domain=[params.FIRST_YEAR, params.FINAL_YEAR], nice=False))
     y_title = f"{title}, % of GDP"
     dash = alt.StrokeDash("Policy:N", scale=alt.Scale(
         domain=["Triple lock (current policy)", "Your scenario"], range=[[6, 4], [1, 0]]),
-        legend=alt.Legend(orient="top", title=None, labelLimit=400))
+        legend=None)
     lines = alt.Chart(df).mark_line(strokeWidth=2.5).encode(
         x=x, y=alt.Y("Central:Q", title=y_title), color=colour, strokeDash=dash,
         tooltip=[alt.Tooltip("Year:Q", format="d"), "Policy:N",
                  alt.Tooltip("Central:Q", title="% of GDP", format=".1f")])
-    if not uncertain:
-        return lines.properties(height=360)
-    band = alt.Chart(df).mark_area(opacity=0.14).encode(
-        x=x, y=alt.Y("Low:Q", title=y_title), y2="High:Q",
-        color=colour)
-    return (band + lines).properties(height=360)
+    layers = lines
+    if uncertain:
+        band = alt.Chart(df).mark_area(opacity=0.14).encode(
+            x=x, y=alt.Y("Low:Q", title=y_title), y2="High:Q", color=band_colour)
+        layers = (band + lines).resolve_legend(color="independent")
+    return layers.properties(
+        height=CHART_HEIGHT,
+        title=alt.TitleParams(note, anchor="end", orient="bottom", fontSize=11,
+                              fontWeight="normal", color="#5A6472", offset=6),
+    ).configure_view(strokeWidth=0)
+
+
+# ---------------------------------------------------------------- the slide-out panel
+@st.dialog("The story behind the model", width="medium", position="right")
+def story_panel():
+    st.markdown(
+        "A Python model projecting how the design of the UK State Pension affects the long-run "
+        "path of UK public debt, from 2026 to 2076. Everything below is a shorter version of "
+        "the full write-up.")
+    if README_PDF.exists():
+        st.download_button("Download the full write-up (PDF)", README_PDF.read_bytes(),
+                           file_name="Pension-debt-model-Alexis-Laurent.pdf", mime="application/pdf",
+                           icon=":material/download:", type="primary", key="pdf_panel")
+
+    idea, ratchet, found, built, limits, words = st.tabs(
+        ["The question", "The ratchet", "What I found", "How it works", "Limits", "Key terms"])
+
+    with idea:
+        st.markdown("""
+#### How do the State Pension's rules shape UK debt?
+
+With ever-tightening fiscal headroom, finding ways to reduce government spending matters more and
+more. In an Advanced Macroeconomics group project on cutting UK debt-to-GDP, I wanted a policy that
+didn't rely on hopes of growth. So we looked at how the Treasury spends its money, and pensions, with
+the triple lock, stood out as a large and fast-rising cost.
+
+We proposed a means-tested pension. The idea worked, but the model was crude: it cut the pension off
+entirely above a threshold, a cliff edge that punished saving. This model is my attempt to do it
+properly. It replaces the cliff edge with a gradual 55% taper, is calibrated on published OBR, ONS
+and DWP data, simulates economic volatility, and lets you explore the scenarios yourself.
+
+It compares three things: the **triple lock** as it is today, **my means-tested alternative**, and
+the **uprating reform** announced by Prime Minister Andy Burnham in September 2026.
+""")
+
+    with ratchet:
+        st.markdown("""
+#### Why the triple lock costs more when the economy is bumpy
+
+Each year, the triple lock raises the pension by the **highest** of inflation, earnings growth or 2.5%,
+and every rise is kept. It picks up whichever rate is high that year, but never falls back when that
+rate drops. That is a ratchet.
+
+So its cost depends on how much inflation and earnings **move around**, not just on their averages.
+(In economic terms, the maximum of several rates is a convex function, so its average is higher than
+the maximum of their averages: Jensen's inequality.)
+
+A simple test shows it. If inflation and earnings alternate between high and low years but keep the
+same averages, the pension rises by about 3.9% a year instead of 3.6%, and 2076 debt reaches 206% of
+GDP instead of 182%.
+
+**Try it:** switch *Volatile economy* on and off along the bottom of the chart.
+""")
+
+    with found:
+        st.markdown("""
+#### The headline results (median of 1,000 simulated futures, 2076)
+
+| | Universal pension | Means-tested |
+|---|---|---|
+| Triple lock | 288% of GDP | 212% |
+| Burnham reform (smoothed earnings link) from 2030 | 219% | **140%** |
+
+- **Volatility matters most.** It raises median 2076 debt under the triple lock from 182% (steady
+  rates) to 288%.
+- **The reform's value is invisible under central assumptions.** With steady rates, Burnham's reform
+  saves nothing. With volatility, it cuts median debt by 69 percentage points, because its whole
+  effect is removing the ratchet.
+- **Means testing cuts the level of spending** by about 22%, from 5% to 3.9% of GDP. About two-thirds
+  of pensioners keep the full pension; the saving comes from the richest third.
+- **The two policies are complements.** Means testing lowers spending; reform removes the ratchet.
+  Together they take median debt from 288% to 140% of GDP.
+
+These are stress tests under simplified assumptions, not forecasts.
+""")
+
+    with built:
+        st.markdown(f"""
+#### Debt
+Each year, debt grows with the interest paid on it, shrinks relative to a growing economy, and changes
+with the government's budget balance:
+""")
+        st.latex(r"b_t = \frac{1 + r}{1 + g_t}\, b_{t-1} - pb_t")
+        st.markdown(f"""
+All other spending and tax are held at today's share of GDP, so the debt paths show **only the
+difference the pension makes**, not a full forecast. Debt starts at 93.8% of GDP (ONS, August 2026).
+Because the interest rate (4.3%) is higher than nominal growth (3.7%), any extra spending compounds.
+
+#### Pension spending
+Spending grows with the uprating rule and the number of pensioners (0.85% a year), relative to the
+economy:
+""")
+        st.latex(r"s_t = s_{t-1} \cdot \frac{(1 + u_t)(1 + n)}{1 + g_t}")
+        st.markdown(f"""
+#### Means test
+Everyone gets the full pension (£{params.MAX_PENSION:.2f} a week) minus 55p for every £1 of other
+income above £238 a week, Universal Credit's taper and the Pension Credit guarantee. Pensioner incomes
+come from DWP *Pensioners' Incomes* (Table 4.4), in ten bands for singles and couples.
+
+#### Burnham reform
+The triple lock stays until 2030, then becomes a double lock (inflation or 2.5%) with an adjustment to
+keep pace with earnings. The details are unpublished, so the *smoothed earnings link* is my reading:
+a double lock, with catch-up whenever the pension falls behind an earnings-linked path.
+
+#### Uncertainty
+The *Volatile economy* switch runs 1,000 futures, each with its own random path of inflation and
+earnings, with spreads calibrated on 2011/12 to 2026/27 data. Every policy faces the same futures,
+so differences come from the policy, not from chance.
+
+#### Saving to hold debt
+This view adds just enough extra saving (spending cuts or tax rises elsewhere) to stop debt rising
+above the target, and shows how much that is each year.
+""")
+
+    with limits:
+        st.markdown("""
+#### What the model leaves out
+
+- **Everything else is frozen.** Tax, other spending and the interest rate stay constant for 50 years.
+  Gilts are already above 5.4% (October 2026); at that rate, triple lock debt reaches 280% of GDP by
+  2076 rather than 182%.
+- **Pensioner growth is fixed** at 0.85% a year, though an ageing population may push it higher, so the
+  model may understate the triple lock's cost.
+- **Each simulated year is independent**, whilst real shocks, like the 2022–24 inflation spike, last
+  several years.
+- **Nobody changes their behaviour.** A 55% taper acts like a tax on savings, so some may save less.
+  Everyone is also assumed to claim, though real Pension Credit take-up is well below 100%.
+- **No government would let debt reach 288% of GDP** without responding. Read the numbers as rough
+  sizes, not predictions.
+""")
+
+    with words:
+        st.markdown("""
+| Term | Meaning |
+|---|---|
+| Debt-to-GDP | Government debt as a share of the size of the economy. 100% means debt equals one year of national output. |
+| Uprating | The yearly increase in the State Pension. |
+| Triple lock | The pension rises by the highest of inflation, average earnings growth, or 2.5%. |
+| Means test | Reducing a benefit for people with higher incomes from other sources. |
+| Percentage points | The gap between two percentages: 288% to 219% is 69 points. |
+| Monte Carlo | Running the model many times, each with a different random economy. |
+| Median | The middle outcome. The shading covers the middle 90%. |
+""")
+
+    st.markdown(f"<p class='small-note'>Code, data sources and full findings: "
+                f"<a href='{REPO_URL}' target='_blank'>GitHub</a>. Model and analysis by Alexis Laurent, "
+                "BA Economics and International Development, University of Sussex.</p>",
+                unsafe_allow_html=True)
 
 
 # ---------------------------------------------------------------- page
-st.set_page_config(page_title="Pension policy and UK debt, 2026-2076", layout="wide")
+st.set_page_config(page_title="Pension policy and UK debt, 2026-2076", layout="wide",
+                   initial_sidebar_state="collapsed")
 st.markdown("""
 <style>
-html, body, [data-testid="stAppViewContainer"], [data-testid="stSidebar"], [data-testid="stMarkdownContainer"],
-[data-testid="stWidgetLabel"], [data-testid="stExpander"], p, label, li, input, button, textarea {
+html, body, [data-testid="stAppViewContainer"], [data-testid="stMarkdownContainer"],
+[data-testid="stWidgetLabel"], p, label, li, input, button, textarea {
   font-family: Georgia, "Times New Roman", serif !important; }
-h1, h2, h3, [data-testid="stHeading"] h1, [data-testid="stHeading"] h2, [data-testid="stHeading"] h3 {
-  font-family: Georgia, "Times New Roman", serif !important; font-weight: 600 !important; letter-spacing: -0.01em; }
-[data-testid="stMarkdownContainer"] p.readout { font-family: Georgia, serif; font-size: 1.5rem !important;
-  line-height: 1.45 !important; max-width: 60rem; margin: 0.2rem 0 1.2rem 0; }
+h1, h2, h3, h4 { font-family: Georgia, "Times New Roman", serif !important; font-weight: 600 !important;
+  letter-spacing: -0.01em; }
+
+/* one screen: trim Streamlit's default page padding, leaving room for its toolbar */
+[data-testid="stHeader"] { background: transparent; }
+[data-testid="stMainBlockContainer"], .block-container {
+  padding-top: 2.6rem !important; padding-bottom: 0.4rem !important; max-width: 1500px; }
+[data-testid="stVerticalBlock"] { gap: 0.3rem; }
+[data-testid="stSlider"] { padding-bottom: 0; }
+[data-testid="stWidgetLabel"] p { font-size: 0.86rem !important; }
+
+.page-head { padding-bottom: 0.9rem; }
+h1.page-title { font-size: 1.55rem !important; margin: 0 !important; padding: 0 !important; line-height: 1.2; }
+p.readout { font-size: 1.02rem !important; line-height: 1.45 !important; margin: 0.15rem 0 0 0;
+  color: #1C2A2E; }
 .readout b.scen { color: #1B7F79; }
 .readout b.base { color: #B23A48; }
-.small-note { color: #5A6472; font-size: 0.9rem; max-width: 62rem; }
+.readout .aside { color: #5A6472; font-style: italic; }
+.small-note { color: #5A6472; font-size: 0.82rem; margin: 0; }
+.small-note a { color: #1B7F79; }
+.panel-head { font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: #5A6472;
+  margin: 0 0 0.1rem 0; border-bottom: 1px solid #DCE2E0; padding-bottom: 0.25rem; }
 </style>""", unsafe_allow_html=True)
 
 if "rule" not in st.session_state:
@@ -218,58 +402,13 @@ if "rule" not in st.session_state:
     st.session_state["preset"] = "Burnham reform from 2030"
     apply_preset()
 
-with st.sidebar:
-    st.selectbox("Start from", list(PRESETS), key="preset", on_change=apply_preset)
-
-    st.subheader("Pension uprating")
-    st.selectbox("Rule", list(RULES), key="rule",
-                 help="How the State Pension rises each year. Reforms apply from the chosen year; "
-                      "the triple lock applies before it.")
-    reform_on = RULES[st.session_state["rule"]] != "triple_lock"
-    st.slider("Reform starts in", 2027, 2060, key="reform_year", disabled=not reform_on)
-    st.slider("Floor (%)", 0.0, 5.0, step=0.1, key="floor",
-              help="Minimum annual rise under the triple and double locks. Currently 2.5%.")
-
-    st.subheader("Means test")
-    st.toggle("Means-test the State Pension", key="means_test",
-              help="Withdraw pension gradually from pensioners with private income above a threshold.")
-    mt_on = st.session_state["means_test"]
-    st.slider("Threshold (£ per week of other income)", 0.0, 600.0, step=5.0, key="threshold", disabled=not mt_on)
-    st.slider("Taper (pence withdrawn per £1 above it)", 0.0, 100.0, step=1.0, key="taper", disabled=not mt_on)
-    st.radio("Threshold rises with", ["Pension uprating", "Earnings"], key="threshold_link",
-             horizontal=True, disabled=not mt_on)
-
-    st.subheader("Economy")
-    st.slider("Real GDP growth (%)", 0.0, 3.0, step=0.1, key="real_growth")
-    st.slider("Inflation (%)", 0.0, 6.0, step=0.1, key="inflation")
-    st.slider("Real earnings growth (%)", -1.0, 3.0, step=0.1, key="productivity")
-    st.slider("Interest rate on debt (%)", 0.0, 8.0, step=0.1, key="gilt")
-    st.slider("Pensioner population growth (%)", 0.0, 2.0, step=0.05, key="pensioner_growth")
-    st.slider("Debt today (% of GDP)", 50.0, 150.0, step=0.5, key="start_debt")
-
-    st.subheader("Uncertainty")
-    st.toggle("Simulate volatile inflation and earnings", key="uncertainty",
-              help="Runs the model on many random economic futures (Monte Carlo) and shows the "
-                   "middle 90% of outcomes. Volatility is calibrated on 2011-2026 UK data.")
-    unc_on = st.session_state["uncertainty"]
-    st.select_slider("Simulated futures", [100, 250, 500, 1000], key="runs", disabled=not unc_on)
-    st.slider("Inflation volatility (pp)", 0.0, 4.0, step=0.05, key="sd_inflation", disabled=not unc_on)
-    st.slider("Real earnings volatility (pp)", 0.0, 4.0, step=0.05, key="sd_productivity", disabled=not unc_on)
-
-    st.subheader("Debt target")
-    st.toggle("Hold debt at a target", key="target_on",
-              help="Shows how much extra saving (spending cuts or tax rises) would be needed each year to "
-                   "stop debt rising above the target, under your scenario and under the triple lock.")
-    st.slider("Target (% of GDP)", 60.0, 150.0, step=5.0, key="debt_target",
-              disabled=not st.session_state["target_on"])
-
+# ---- run the model (session_state already holds every control's current value)
 settings = {key: st.session_state[key] for key in DEFAULTS}
 settings_items = tuple(sorted(settings.items()))
 uncertain = settings["uncertainty"]
+view = st.session_state["view"]
 with st.spinner("Running the model"):
     results = run_uncertain(settings_items) if uncertain else run_deterministic(settings_items)
-
-st.title("Pension uprating and UK public debt, 2026-2076")
 
 
 def final(name, measure, key="p50"):
@@ -277,112 +416,141 @@ def final(name, measure, key="p50"):
     return (series[key][-1] if uncertain else series[-1]) * 100
 
 
-scen, base = final("scenario", "debt"), final("baseline", "debt")
-gap = base - scen
-if abs(gap) < 0.5:
-    comparison = "about the same as keeping the triple lock"
-elif gap > 0:
-    comparison = f"{gap:.0f} points lower than keeping the triple lock (<b class='base'>{base:.0f}%</b>)"
-else:
-    comparison = f"{-gap:.0f} points higher than keeping the triple lock (<b class='base'>{base:.0f}%</b>)"
-lead = "In the median simulated future, public" if uncertain else "Public"
-if scen >= 0:
-    outcome = f"debt reaches <b class='scen'>{scen:.0f}% of GDP</b>"
-else:
-    outcome = f"debt is paid off entirely, leaving <b class='scen'>net assets of {-scen:.0f}% of GDP</b>"
-sentence = f"{lead} {outcome} in 2076 under your settings, {comparison}."
-if uncertain:
-    lo, hi = final("scenario", "debt", "p5"), final("scenario", "debt", "p95")
-    sentence += f" In 90% of futures it lands between {lo:.0f}% and {hi:.0f}%."
-st.markdown(f"<p class='readout'>{sentence}</p>", unsafe_allow_html=True)
-if not uncertain and RULES[settings["rule"]] in ("smoothed_earnings", "earnings"):
-    st.info("With steady inflation and earnings, earnings always beat inflation, so this reform behaves just "
-            "like the triple lock. Its effect comes from removing the triple lock's ratchet in volatile years: "
-            "switch on **Simulate volatile inflation and earnings** in the sidebar to see it.")
+def first_year_needed(name):
+    series = results[name]["saving"]
+    path = series["p50"] if uncertain else series
+    for year, value in zip(results[name]["years"], path):
+        if value > 1e-9:
+            return year
+    return None
 
-st.altair_chart(chart(results, "debt", "Public debt", uncertain), width="stretch")
-if uncertain:
-    st.markdown(f"<p class='small-note'>Lines show the median of {settings['runs']:,} simulated futures; "
-                "shading covers the middle 90%. The dashed red line keeps today's triple lock in the same futures.</p>",
-                unsafe_allow_html=True)
 
-if settings["target_on"]:
+# ---- the readout sentence, for whichever view is showing
+lead = "In the median future, " if uncertain else ""
+if view == "Public debt":
+    scen, base = final("scenario", "debt"), final("baseline", "debt")
+    gap = base - scen
+    if abs(gap) < 0.5:
+        comparison = "about the same as keeping the triple lock"
+    elif gap > 0:
+        comparison = f"{gap:.0f} points lower than keeping the triple lock (<b class='base'>{base:.0f}%</b>)"
+    else:
+        comparison = f"{-gap:.0f} points higher than keeping the triple lock (<b class='base'>{base:.0f}%</b>)"
+    if scen >= 0:
+        outcome = f"debt reaches <b class='scen'>{scen:.0f}% of GDP</b>"
+    else:
+        outcome = f"debt is paid off entirely, leaving <b class='scen'>net assets of {-scen:.0f}% of GDP</b>"
+    sentence = f"{lead}public {outcome} in 2076 under your settings, {comparison}."
+    if uncertain:
+        lo, hi = final("scenario", "debt", "p5"), final("scenario", "debt", "p95")
+        sentence += f" In 90% of futures it lands between {lo:.0f}% and {hi:.0f}%."
+    elif RULES[settings["rule"]] in ("smoothed_earnings", "earnings"):
+        sentence += (" <span class='aside'>With a steady economy this reform matches the triple lock; "
+                     "turn on <b>Volatile economy</b> to see what it saves.</span>")
+elif view == "Pension spending":
+    pen_s, pen_b = final("scenario", "pension"), final("baseline", "pension")
+    sentence = (f"{lead}State Pension spending is <b class='scen'>{pen_s:.1f}% of GDP</b> in 2076 under your "
+                f"settings, against <b class='base'>{pen_b:.1f}%</b> under the triple lock (5% today). "
+                f"A lower line means pensions grow more slowly than the economy.")
+else:
     target = settings["debt_target"]
-    st.subheader(f"Saving needed to hold debt at {target:.0f}% of GDP")
-
-    def first_year_needed(name):
-        series = results[name]["saving"]
-        path = series["p50"] if uncertain else series
-        for year, value in zip(results[name]["years"], path):
-            if value > 1e-9:
-                return year
-        return None
-
-    def describe(name):
-        year = first_year_needed(name)
-        if year is None:
-            return None, None, None
-        share = final(name, "saving")
-        return year, share, share / 100 * GDP_2026_27_BN
-
-    y_s, sh_s, bn_s = describe("scenario")
-    y_b, sh_b, bn_b = describe("baseline")
-    median = "In the median future, d" if uncertain else "D"
+    y_s, y_b = first_year_needed("scenario"), first_year_needed("baseline")
     if y_s is None:
-        text = (f"{median}ebt stays below {target:.0f}% of GDP until 2076 under your settings, "
-                f"so no extra saving is needed.")
+        sentence = f"{lead}debt stays below {target:.0f}% of GDP to 2076 under your settings, so no extra saving is needed."
     else:
-        text = (f"{median}ebt first reaches {target:.0f}% of GDP in {y_s} under your settings. Holding it there "
-                f"needs extra saving of <b class='scen'>{sh_s:.1f}% of GDP a year</b> by 2076, about "
-                f"<b class='scen'>£{bn_s:,.0f}bn</b> at today's size of the economy.")
+        sh_s = final("scenario", "saving")
+        sentence = (f"{lead}holding debt at {target:.0f}% of GDP needs extra saving from {y_s}, reaching "
+                    f"<b class='scen'>{sh_s:.1f}% of GDP (about £{sh_s / 100 * GDP_2026_27_BN:,.0f}bn)</b> a year by 2076.")
     if y_b is None:
-        text += " Under the triple lock, no extra saving would be needed."
+        sentence += " Under the triple lock, none would be needed."
     else:
-        text += (f" Keeping the triple lock, the target is reached in {y_b} and needs "
-                 f"<b class='base'>{sh_b:.1f}% of GDP (about £{bn_b:,.0f}bn)</b> a year by 2076.")
-    st.markdown(f"<p class='readout' style='font-size:1.25rem !important'>{text}</p>", unsafe_allow_html=True)
-    st.altair_chart(chart(results, "saving", "Extra saving", uncertain), width="stretch")
-    st.markdown("<p class='small-note'>Extra saving means a larger primary surplus (spending cuts or tax rises "
-                "elsewhere in the budget) than today's. Holding debt down also lowers future interest costs, which "
-                "the calculation includes. Pounds use the OBR's 2026-27 GDP forecast (about £3.2 trillion), so they "
-                "show each year's share of GDP at today's size of the economy.</p>", unsafe_allow_html=True)
+        sh_b = final("baseline", "saving")
+        sentence += (f" Keeping the triple lock: <b class='base'>{sh_b:.1f}% "
+                     f"(about £{sh_b / 100 * GDP_2026_27_BN:,.0f}bn)</b>, from {y_b}.")
+sentence = sentence[0].upper() + sentence[1:]
 
-pen_s, pen_b = final("scenario", "pension"), final("baseline", "pension")
-st.subheader("State Pension spending")
-st.markdown(f"<p class='small-note'>{pen_s:.1f}% of GDP in 2076 under your settings, against "
-            f"{pen_b:.1f}% under the triple lock. A lower line means pensions grow more slowly "
-            f"than the economy, so the saving comes from pensioners' relative incomes.</p>",
-            unsafe_allow_html=True)
-st.altair_chart(chart(results, "pension", "Spending", uncertain), width="stretch")
 
-with st.expander("How the model works"):
-    st.markdown(f"""
-Each year the model grows State Pension spending by the uprating rule and the number of pensioners,
-relative to the size of the economy, then updates debt with the standard identity:
-debt grows with the interest rate, shrinks relative to GDP as the economy grows, and moves
-with any change in pension spending compared with today (all other spending and tax is held
-at today's share of GDP). This isolates the effect of pension policy; it is not a full fiscal forecast.
+# ---- header: title, the one-line readout, and the invitation to read more
+head_left, head_right = st.columns([5, 1.25], vertical_alignment="center")
+with head_left:
+    st.markdown("<div class='page-head'><h1 class='page-title'>Pension uprating and UK public debt, 2026–2076</h1>"
+                f"<p class='readout'>{sentence}</p></div>", unsafe_allow_html=True)
+with head_right:
+    if st.button("How does this work?", icon=":material/menu_book:", type="primary", width="stretch",
+                 help="The question, the findings and how the model is built"):
+        story_panel()
 
-**Means test.** Pensioners keep the full pension (£{params.MAX_PENSION:.2f} a week) until their other
-income passes the threshold, then lose the taper rate for every £1 above it. Pensioner incomes come
-from DWP's *Pensioners' Incomes* series, in ten bands for singles and couples, weighted by population.
+# ---- body: pension policy | chart | economy
+left, centre, right = st.columns([1.15, 3.3, 1.15], gap="medium")
 
-**Burnham reform.** In September 2026 the Prime Minister announced the triple lock will be kept until
-April 2030, then replaced by a double lock (inflation or 2.5%) with a longer-term adjustment to keep
-pace with earnings. The details are unpublished; the "smoothed earnings link" option is our reading:
-a double lock each year, with catch-up whenever the pension falls behind an earnings-linked path.
+with left:
+    st.markdown("<p class='panel-head'>Pension policy</p>", unsafe_allow_html=True)
+    st.selectbox("Start from", list(PRESETS), key="preset", on_change=apply_preset,
+                 help="Quick scenarios. Each one resets every control.")
+    st.selectbox("How the pension rises", list(RULES), key="rule",
+                 help="The uprating rule. Reforms apply from the year below; the triple lock applies before it.")
+    reform_on = RULES[st.session_state["rule"]] != "triple_lock"
+    st.slider("Reform starts in", 2027, 2060, key="reform_year", disabled=not reform_on)
+    st.toggle("Means-test the pension", key="means_test",
+              help="Withdraw the pension gradually from pensioners with private income above a threshold.")
+    mt_on = st.session_state["means_test"]
+    st.slider("Threshold (£ a week of other income)", 0.0, 600.0, step=5.0, key="threshold",
+              format="£%.0f", disabled=not mt_on)
+    st.slider("Taper (pence lost per £1 above it)", 0.0, 100.0, step=1.0, key="taper", format="%.0fp",
+              disabled=not mt_on)
+    with st.popover("More pension options", icon=":material/tune:", width="stretch"):
+        st.slider("Floor", 0.0, 5.0, step=0.1, key="floor", format="%.1f%%",
+                  help="Minimum annual rise under the triple and double locks. Currently 2.5%.")
+        st.radio("Means-test threshold rises with", ["Pension uprating", "Earnings"], key="threshold_link",
+                 horizontal=True, disabled=not mt_on)
 
-**Uncertainty.** With volatility switched on, inflation and real earnings are drawn at random each year
-around the chosen averages, with spreads calibrated on the triple lock's own inputs from 2011/12 to
-2026/27. Because the triple lock keeps the highest of its measures and never gives it back, volatility
-raises its cost. Treat the ranges as a stress test rather than a forecast.
+with right:
+    st.markdown("<p class='panel-head'>The economy</p>", unsafe_allow_html=True)
+    st.slider("Real GDP growth", 0.0, 3.0, step=0.1, key="real_growth", format="%.1f%%")
+    st.slider("Inflation", 0.0, 6.0, step=0.1, key="inflation", format="%.1f%%")
+    st.slider("Real earnings growth", -1.0, 3.0, step=0.1, key="productivity", format="%.1f%%")
+    st.slider("Interest rate on debt", 0.0, 8.0, step=0.1, key="gilt", format="%.1f%%")
+    with st.popover("More economy options", icon=":material/tune:", width="stretch"):
+        st.slider("Pensioner population growth", 0.0, 2.0, step=0.05, key="pensioner_growth", format="%.2f%%")
+        st.slider("Debt today (% of GDP)", 50.0, 150.0, step=0.5, key="start_debt", format="%.1f%%")
 
-**Debt target.** With the target switched on, the model rebuilds each debt path with the same equation and,
-in any year where debt would end above the target, adds just enough extra primary surplus to hold it there.
-The chart shows that required saving year by year, as a share of GDP. Because debt is held down, interest
-costs are lower too, so the saving needed is smaller than the gap between the uncapped debt line and the target.
+# ---- bottom row: what to show, and how much uncertainty
+st.markdown("<div style='height:0.2rem'></div>", unsafe_allow_html=True)
+b_view, b_unc, b_vol, b_target = st.columns([2.1, 1.25, 1.25, 1.6], gap="medium", vertical_alignment="bottom")
+with b_view:
+    st.segmented_control("Show", VIEWS, key="view", required=True, width="stretch")
+with b_unc:
+    st.toggle("Volatile economy", key="uncertainty",
+              help="Runs the model on many random economic futures (Monte Carlo) and shades the "
+                   "middle 90% of outcomes. Volatility is calibrated on 2011-2026 UK data.")
+    unc_on = st.session_state["uncertainty"]
+with b_vol:
+    with st.popover("Volatility settings", icon=":material/ssid_chart:", width="stretch", disabled=not unc_on):
+        st.select_slider("Simulated futures", [100, 250, 500, 1000], key="runs")
+        st.slider("Inflation volatility (pp)", 0.0, 4.0, step=0.05, key="sd_inflation", format="%.2f")
+        st.slider("Real earnings volatility (pp)", 0.0, 4.0, step=0.05, key="sd_productivity", format="%.2f")
+with b_target:
+    st.slider("Debt target (% of GDP)", 60.0, 150.0, step=5.0, key="debt_target", format="%.0f%%",
+              disabled=view != "Saving to hold debt",
+              help="Used by the 'Saving to hold debt' view.")
 
-Code, data sources, findings and limitations: [{REPO_URL}]({REPO_URL})
-""")
-st.markdown("<p class='small-note'>Model and analysis by Alexis Laurent, BSc Economics and International "
-            "Development, University of Sussex.</p>", unsafe_allow_html=True)
+# ---- the chart, in the centre
+measure, title = {"Public debt": ("debt", "Public debt"),
+                  "Pension spending": ("pension", "Pension spending"),
+                  "Saving to hold debt": ("saving", "Extra saving")}[view]
+note = (f"Lines: median of {settings['runs']:,} simulated futures. Shading: middle 90%."
+        if uncertain else "Steady inflation and earnings growth.")
+with centre:
+    st.altair_chart(chart(results, measure, title, uncertain, note), width="stretch")
+
+# ---- footer: credit and the write-up
+foot_left, foot_right = st.columns([5, 1.25], vertical_alignment="center")
+with foot_left:
+    st.markdown(f"<p class='small-note'>Model and analysis by Alexis Laurent, BA Economics and International "
+                f"Development, University of Sussex · <a href='{REPO_URL}' target='_blank'>Code on GitHub</a>"
+                " · A stress test, not a forecast.</p>", unsafe_allow_html=True)
+with foot_right:
+    if README_PDF.exists():
+        st.download_button("Full write-up (PDF)", README_PDF.read_bytes(),
+                           file_name="Pension-debt-model-Alexis-Laurent.pdf", mime="application/pdf",
+                           icon=":material/download:", type="tertiary", width="stretch", key="pdf_footer")
