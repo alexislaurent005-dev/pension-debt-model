@@ -1,6 +1,8 @@
 # Means-Tested Pension vs. Triple Lock: A Debt-to-GDP Model
 
 **[Open the interactive model](https://alexislaurent-pension-debt-model.streamlit.app/)**
+[![tests](https://github.com/alexislaurent005-dev/pension-debt-model/actions/workflows/tests.yml/badge.svg)](https://github.com/alexislaurent005-dev/pension-debt-model/actions/workflows/tests.yml)
+
 
 A Python model projecting how the design of the UK State Pension affects the long-run path of UK public debt, from 2026 to 2076.
 
