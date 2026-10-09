@@ -30,7 +30,6 @@ README_PDF = Path(__file__).parent / "docs" / "README.pdf"
 
 SCENARIO_COLOUR = "#1B7F79"   # teal: the reader's scenario
 BASELINE_COLOUR = "#B23A48"   # muted red: the current triple lock
-CHART_HEIGHT = 400
 
 RULES = {
     "Triple lock (current policy)": "triple_lock",
@@ -41,7 +40,7 @@ RULES = {
 }
 
 # What the chart in the centre shows. The reader switches between these along the bottom.
-VIEWS = ["Public debt", "Pension spending", "Saving to hold debt"]
+VIEWS = ["Public debt", "Pension spending", "Saving needed"]
 
 # Presets set every control at once. Values are stored in session_state
 # under the same keys the widgets use.
@@ -71,7 +70,7 @@ PRESETS = {
     "Burnham reform + means test": {"rule": "Burnham reform (smoothed earnings link)",
                                     "means_test": True},
     "Hold debt at 100% of GDP": {"rule": "Burnham reform (smoothed earnings link)",
-                                 "view": "Saving to hold debt"},
+                                 "view": "Saving needed"},
 }
 
 
@@ -190,7 +189,7 @@ def chart(results, measure, title, uncertain, note=""):
     df = pd.DataFrame(rows)
     colour_scale = alt.Scale(domain=["Triple lock (current policy)", "Your scenario"],
                              range=[BASELINE_COLOUR, SCENARIO_COLOUR])
-    legend = alt.Legend(orient="top-left", title=None, labelLimit=400, labelFontSize=12, symbolType="stroke",
+    legend = alt.Legend(orient="top-left", title=None, labelLimit=400, labelFontSize=14, symbolType="stroke",
                         symbolStrokeWidth=2.5, symbolSize=300,
                         fillColor="rgba(255,255,255,0.85)", padding=6)
     colour = alt.Color("Policy:N", scale=colour_scale, legend=legend)
@@ -202,7 +201,7 @@ def chart(results, measure, title, uncertain, note=""):
         domain=["Triple lock (current policy)", "Your scenario"], range=[[6, 4], [1, 0]]),
         legend=None)
     lines = alt.Chart(df).mark_line(strokeWidth=2.5).encode(
-        x=x, y=alt.Y("Central:Q", title=y_title), color=colour, strokeDash=dash,
+        x=x, y=alt.Y("Central:Q", title=y_title, axis=alt.Axis(tickCount=8)), color=colour, strokeDash=dash,
         tooltip=[alt.Tooltip("Year:Q", format="d"), "Policy:N",
                  alt.Tooltip("Central:Q", title="% of GDP", format=".1f")])
     layers = lines
@@ -211,10 +210,12 @@ def chart(results, measure, title, uncertain, note=""):
             x=x, y=alt.Y("Low:Q", title=y_title), y2="High:Q", color=band_colour)
         layers = (band + lines).resolve_legend(color="independent")
     return layers.properties(
-        height=CHART_HEIGHT,
-        title=alt.TitleParams(note, anchor="end", orient="bottom", fontSize=11,
+        height="container", width="container",
+        title=alt.TitleParams(note, anchor="end", orient="bottom", fontSize=12, font="Georgia",
                               fontWeight="normal", color="#5A6472", offset=6),
-    ).configure_view(strokeWidth=0)
+    ).configure_view(strokeWidth=0).configure_axis(
+        labelFontSize=13, titleFontSize=14, labelFont="Georgia", titleFont="Georgia",
+        titleFontWeight="normal").configure_legend(labelFont="Georgia")
 
 
 # ---------------------------------------------------------------- the slide-out panel
@@ -266,7 +267,7 @@ A simple test shows it. If inflation and earnings alternate between high and low
 same averages, the pension rises by about 3.9% a year instead of 3.6%, and 2076 debt reaches 206% of
 GDP instead of 182%.
 
-**Try it:** switch *Volatile economy* on and off along the bottom of the chart.
+**Try it:** switch *Volatile economy* on and off under the chart.
 """)
 
     with found:
@@ -324,7 +325,7 @@ The *Volatile economy* switch runs 1,000 futures, each with its own random path 
 earnings, with spreads calibrated on 2011/12 to 2026/27 data. Every policy faces the same futures,
 so differences come from the policy, not from chance.
 
-#### Saving to hold debt
+#### Saving needed
 This view adds just enough extra saving (spending cuts or tax rises elsewhere) to stop debt rising
 above the target, and shows how much that is each year.
 """)
@@ -376,25 +377,51 @@ html, body, [data-testid="stAppViewContainer"], [data-testid="stMarkdownContaine
 h1, h2, h3, h4 { font-family: Georgia, "Times New Roman", serif !important; font-weight: 600 !important;
   letter-spacing: -0.01em; }
 
-/* one screen: trim Streamlit's default page padding, leaving room for its toolbar */
+/* one screen, full width: side margins, and room at the top for Streamlit's toolbar */
 [data-testid="stHeader"] { background: transparent; }
 [data-testid="stMainBlockContainer"], .block-container {
-  padding-top: 2.6rem !important; padding-bottom: 0.4rem !important; max-width: 1500px; }
-[data-testid="stVerticalBlock"] { gap: 0.3rem; }
-[data-testid="stSlider"] { padding-bottom: 0; }
-[data-testid="stWidgetLabel"] p { font-size: 0.86rem !important; }
+  max-width: 100% !important; padding: 2.4rem 3.5rem 0.4rem 3.5rem !important; }
+[data-testid="stVerticalBlock"] { gap: 0.45rem; }
+[data-testid="stWidgetLabel"] p { font-size: 0.98rem !important; }
+[data-baseweb="select"] div, [data-testid="stPopover"] button p, [data-testid="stBaseButton-segmented_control"] p,
+[data-testid="stBaseButton-segmented_controlActive"] p { font-size: 0.98rem !important; }
+[data-testid="stSliderThumbValue"], [data-testid="stSliderTickBar"] { font-size: 0.9rem; }
 
-.page-head { padding-bottom: 0.9rem; }
-h1.page-title { font-size: 1.55rem !important; margin: 0 !important; padding: 0 !important; line-height: 1.2; }
-p.readout { font-size: 1.02rem !important; line-height: 1.45 !important; margin: 0.15rem 0 0 0;
-  color: #1C2A2E; }
+/* the chart fills whatever height the window leaves after the title and the controls */
+[data-testid="stLayoutWrapper"]:has(> .st-key-chartbox), .st-key-chartbox {
+  height: calc(100vh - 300px) !important; min-height: 330px; flex: 0 0 auto !important; }
+
+/* the side panels stretch to the same height as the chart and spread their controls out */
+[data-testid="stLayoutWrapper"]:has(> .st-key-leftpanel), .st-key-leftpanel {
+  height: calc(100vh - 150px) !important; min-height: 500px; flex: 0 0 auto !important; }
+[data-testid="stLayoutWrapper"]:has(> .st-key-rightpanel), .st-key-rightpanel {
+  height: calc(100vh - 215px) !important; min-height: 430px; flex: 0 0 auto !important; }
+.st-key-leftpanel, .st-key-rightpanel { justify-content: space-between; }
+.st-key-chartbox [data-testid="stVegaLiteChart"], .st-key-chartbox .stVegaLiteChart { height: 100%; }
+
+.page-head { text-align: center; padding: 0 1rem 0.6rem 1rem; }
+h1.page-title { font-size: 2.05rem !important; margin: 0 !important; padding: 0 !important; line-height: 1.2; }
+p.readout { font-size: 1.18rem !important; line-height: 1.5 !important; margin: 0.35rem auto 0 auto;
+  max-width: 62rem; color: #1C2A2E; }
 .readout b.scen { color: #1B7F79; }
 .readout b.base { color: #B23A48; }
 .readout .aside { color: #5A6472; font-style: italic; }
-.small-note { color: #5A6472; font-size: 0.82rem; margin: 0; }
+.small-note { color: #5A6472; font-size: 0.9rem; margin: 0; }
 .small-note a { color: #1B7F79; }
-.panel-head { font-size: 0.78rem; letter-spacing: 0.08em; text-transform: uppercase; color: #5A6472;
-  margin: 0 0 0.1rem 0; border-bottom: 1px solid #DCE2E0; padding-bottom: 0.25rem; }
+.footer { text-align: center; padding-top: 0.3rem; }
+.panel-head { font-size: 0.9rem; letter-spacing: 0.08em; text-transform: uppercase; color: #5A6472;
+  margin: 0.4rem 0 0.2rem 0; border-bottom: 1px solid #DCE2E0; padding-bottom: 0.3rem; }
+
+/* smaller laptops: tighter margins and slightly smaller control text so the bottom row fits */
+@media (max-width: 1500px) {
+  [data-testid="stMainBlockContainer"], .block-container { padding-left: 1.5rem !important;
+    padding-right: 1.5rem !important; }
+  [data-testid="stWidgetLabel"] p, [data-baseweb="select"] div, [data-testid="stPopover"] button p,
+  [data-testid="stBaseButton-segmented_control"] p, [data-testid="stBaseButton-segmented_controlActive"] p {
+    font-size: 0.85rem !important; }
+  h1.page-title { font-size: 1.75rem !important; }
+  p.readout { font-size: 1.05rem !important; }
+}
 </style>""", unsafe_allow_html=True)
 
 if "rule" not in st.session_state:
@@ -470,21 +497,12 @@ else:
 sentence = sentence[0].upper() + sentence[1:]
 
 
-# ---- header: title, the one-line readout, and the invitation to read more
-head_left, head_right = st.columns([5, 1.25], vertical_alignment="center")
-with head_left:
-    st.markdown("<div class='page-head'><h1 class='page-title'>Pension uprating and UK public debt, 2026–2076</h1>"
-                f"<p class='readout'>{sentence}</p></div>", unsafe_allow_html=True)
-with head_right:
-    if st.button("How does this work?", icon=":material/menu_book:", type="primary", width="stretch",
-                 help="The question, the findings and how the model is built"):
-        story_panel()
-
-# ---- body: pension policy | chart | economy
-left, centre, right = st.columns([1.15, 3.3, 1.15], gap="medium")
+# ---- three columns: pension policy | title, readout, chart and view controls | the economy
+left, centre, right = st.columns([1, 3.4, 1], gap="large")
 
 with left:
     st.markdown("<p class='panel-head'>Pension policy</p>", unsafe_allow_html=True)
+with left, st.container(key="leftpanel"):
     st.selectbox("Start from", list(PRESETS), key="preset", on_change=apply_preset,
                  help="Quick scenarios. Each one resets every control.")
     st.selectbox("How the pension rises", list(RULES), key="rule",
@@ -505,7 +523,11 @@ with left:
                  horizontal=True, disabled=not mt_on)
 
 with right:
+    if st.button("How does this work?", icon=":material/menu_book:", type="primary", width="stretch",
+                 help="The question, the findings and how the model is built"):
+        story_panel()
     st.markdown("<p class='panel-head'>The economy</p>", unsafe_allow_html=True)
+with right, st.container(key="rightpanel"):
     st.slider("Real GDP growth", 0.0, 3.0, step=0.1, key="real_growth", format="%.1f%%")
     st.slider("Inflation", 0.0, 6.0, step=0.1, key="inflation", format="%.1f%%")
     st.slider("Real earnings growth", -1.0, 3.0, step=0.1, key="productivity", format="%.1f%%")
@@ -513,44 +535,45 @@ with right:
     with st.popover("More economy options", icon=":material/tune:", width="stretch"):
         st.slider("Pensioner population growth", 0.0, 2.0, step=0.05, key="pensioner_growth", format="%.2f%%")
         st.slider("Debt today (% of GDP)", 50.0, 150.0, step=0.5, key="start_debt", format="%.1f%%")
-
-# ---- bottom row: what to show, and how much uncertainty
-st.markdown("<div style='height:0.2rem'></div>", unsafe_allow_html=True)
-b_view, b_unc, b_vol, b_target = st.columns([2.1, 1.25, 1.25, 1.6], gap="medium", vertical_alignment="bottom")
-with b_view:
-    st.segmented_control("Show", VIEWS, key="view", required=True, width="stretch")
-with b_unc:
-    st.toggle("Volatile economy", key="uncertainty",
-              help="Runs the model on many random economic futures (Monte Carlo) and shades the "
-                   "middle 90% of outcomes. Volatility is calibrated on 2011-2026 UK data.")
-    unc_on = st.session_state["uncertainty"]
-with b_vol:
-    with st.popover("Volatility settings", icon=":material/ssid_chart:", width="stretch", disabled=not unc_on):
-        st.select_slider("Simulated futures", [100, 250, 500, 1000], key="runs")
-        st.slider("Inflation volatility (pp)", 0.0, 4.0, step=0.05, key="sd_inflation", format="%.2f")
-        st.slider("Real earnings volatility (pp)", 0.0, 4.0, step=0.05, key="sd_productivity", format="%.2f")
-with b_target:
-    st.slider("Debt target (% of GDP)", 60.0, 150.0, step=5.0, key="debt_target", format="%.0f%%",
-              disabled=view != "Saving to hold debt",
-              help="Used by the 'Saving to hold debt' view.")
-
-# ---- the chart, in the centre
-measure, title = {"Public debt": ("debt", "Public debt"),
-                  "Pension spending": ("pension", "Pension spending"),
-                  "Saving to hold debt": ("saving", "Extra saving")}[view]
-note = (f"Lines: median of {settings['runs']:,} simulated futures. Shading: middle 90%."
-        if uncertain else "Steady inflation and earnings growth.")
-with centre:
-    st.altair_chart(chart(results, measure, title, uncertain, note), width="stretch")
-
-# ---- footer: credit and the write-up
-foot_left, foot_right = st.columns([5, 1.25], vertical_alignment="center")
-with foot_left:
-    st.markdown(f"<p class='small-note'>Model and analysis by Alexis Laurent, BA Economics and International "
-                f"Development, University of Sussex · <a href='{REPO_URL}' target='_blank'>Code on GitHub</a>"
-                " · A stress test, not a forecast.</p>", unsafe_allow_html=True)
-with foot_right:
     if README_PDF.exists():
         st.download_button("Full write-up (PDF)", README_PDF.read_bytes(),
                            file_name="Pension-debt-model-Alexis-Laurent.pdf", mime="application/pdf",
-                           icon=":material/download:", type="tertiary", width="stretch", key="pdf_footer")
+                           icon=":material/download:", type="tertiary", width="stretch", key="pdf_side")
+
+measure, title = {"Public debt": ("debt", "Public debt"),
+                  "Pension spending": ("pension", "Pension spending"),
+                  "Saving needed": ("saving", "Extra saving")}[view]
+note = (f"Lines: median of {settings['runs']:,} simulated futures. Shading: middle 90%."
+        if uncertain else "Steady inflation and earnings growth.")
+
+with centre:
+    st.markdown("<div class='page-head'><h1 class='page-title'>Pension uprating and UK public debt, 2026–2076</h1>"
+                f"<p class='readout'>{sentence}</p></div>", unsafe_allow_html=True)
+    with st.container(key="chartbox"):
+        st.altair_chart(chart(results, measure, title, uncertain, note), width="stretch", height="stretch")
+
+    # along the bottom of the chart: what to show, and how much uncertainty
+    b_view, b_unc, b_vol, b_target = st.columns([2.5, 1.15, 1.0, 1.4], gap="medium",
+                                                vertical_alignment="bottom")
+    with b_view:
+        st.segmented_control("Show", VIEWS, key="view", required=True, width="stretch")
+    with b_unc:
+        st.toggle("Volatile economy", key="uncertainty",
+                  help="Runs the model on many random economic futures (Monte Carlo) and shades the "
+                       "middle 90% of outcomes. Volatility is calibrated on 2011-2026 UK data.")
+        unc_on = st.session_state["uncertainty"]
+    with b_vol:
+        with st.popover("Volatility", icon=":material/ssid_chart:", width="stretch",
+                        disabled=not unc_on):
+            st.select_slider("Simulated futures", [100, 250, 500, 1000], key="runs")
+            st.slider("Inflation volatility (pp)", 0.0, 4.0, step=0.05, key="sd_inflation", format="%.2f")
+            st.slider("Real earnings volatility (pp)", 0.0, 4.0, step=0.05, key="sd_productivity", format="%.2f")
+    with b_target:
+        st.slider("Debt target (% of GDP)", 60.0, 150.0, step=5.0, key="debt_target", format="%.0f%%",
+                  disabled=view != "Saving needed",
+                  help="Used by the 'Saving needed' view.")
+
+# ---- footer
+st.markdown(f"<p class='small-note footer'>Model and analysis by Alexis Laurent, BA Economics and International "
+            f"Development, University of Sussex · <a href='{REPO_URL}' target='_blank'>Code on GitHub</a>"
+            " · A stress test, not a forecast.</p>", unsafe_allow_html=True)

@@ -268,13 +268,14 @@ Reworked `app.py` so the whole model fits on one screen without scrolling,
 for readers with no economics background. No model code in `src/` changed,
 and the model-calling functions in `app.py` are unchanged.
 
-- **Layout:** chart in the centre; pension policy controls on the left, the
-  economy on the right, and the chart view, volatility and debt target along
-  the bottom. Less-used controls (the floor, threshold uprating, pensioner
+- **Layout:** full width with side margins. The title and readout sit centred
+  above the chart, which stretches to fill the window height; pension policy
+  controls run down the left, the economy down the right, and the chart view,
+  volatility and debt target sit under the chart. Less-used controls (the floor, threshold uprating, pensioner
   growth, starting debt, number of futures, volatility sizes) sit behind
   "More options" pop-overs.
 - **One chart, three views:** public debt, pension spending, or the saving
-  needed to hold debt at a target, chosen along the bottom. The readout
+  needed to hold debt at a target, chosen under the chart. The readout
   sentence above the chart changes with the view.
 - **Story panel:** all the explanation (the question, the ratchet, findings,
   how the model works, limitations, key terms) moved into a panel that slides
