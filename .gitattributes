@@ -1,0 +1,4 @@
+# Never let Git change line endings inside these files: a PDF changed by even one byte breaks.
+*.pdf binary
+*.png binary
+*.jpg binary
